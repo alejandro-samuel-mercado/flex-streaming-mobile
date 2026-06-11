@@ -24,7 +24,8 @@ const NobaVideoPlayer = React.memo(({
     videoRef,
     resizeMode,
     onStatus,
-    setError
+    setError,
+    onPlayerError,
 }: any) => {
     return (
         <Video
@@ -33,15 +34,23 @@ const NobaVideoPlayer = React.memo(({
             style={s.video}
             resizeMode={resizeMode}
             onPlaybackStatusUpdate={onStatus}
-            progressUpdateIntervalMillis={500}
+            progressUpdateIntervalMillis={1000}
             useNativeControls={false}
+            shouldCorrectPitch={false}
             onError={(err) => {
-                console.error("Video Error:", err);
-                setError("Error al cargar el video. Verifica tu conexión o el formato del stream.");
+                // expo-av fires "player error:null" on network blips (not fatal)
+                // Only show a real error if it's meaningful
+                const isNullError = !err || err === 'null' || String(err).toLowerCase().includes('null');
+                if (isNullError) {
+                    onPlayerError?.('network_blip');
+                } else {
+                    console.error('Video fatal error:', err);
+                    setError('Error al cargar el video. Verifica tu conexión.');
+                }
             }}
         />
     );
-}, (prev, next) => prev.resizeMode === next.resizeMode); // Re-render ONLY if resizeMode changes
+}, (prev, next) => prev.resizeMode === next.resizeMode);
 
 export default function WatchScreen() {
     const { width: SW, height: SH } = useWindowDimensions();
@@ -59,7 +68,11 @@ export default function WatchScreen() {
     const [content, setContent] = useState<any>(null);
     const [currentEpisode, setCurrentEpisode] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [isBuffering, setIsBuffering] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const retryCount = useRef(0);
+    const streamUrlRef = useRef<string | null>(null);
+    const lastPositionRef = useRef(0);
     const [streamSrc, setStreamSrc] = useState<string | null>(null);
     const [showControls, setShowControls] = useState(true);
     const controlsOpacity = useSharedValue(1);
@@ -261,19 +274,32 @@ export default function WatchScreen() {
                 });
 
                 if (streamJson.success && streamJson.data) {
-                    const { token, videoFileId } = streamJson.data;
+                    const { token, videoFileId, streamBaseUrl } = streamJson.data;
                     const videos = ep ? ep.videoFiles : data.videoFiles;
                     const vf = videos?.find((v: any) => v.id === videoFileId) || videos?.[0];
                     const filename = vf?.masterPlaylist?.split('/').pop() || 'master.m3u8';
-                    const url = `${API_BASE_URL}/stream/hls/${videoFileId}/${token}/${filename}`;
+                    // Use the storage node URL if provided, otherwise fall back to the main API
+                    const baseUrl = streamBaseUrl || API_BASE_URL;
+                    const url = `${baseUrl}/stream/hls/${videoFileId}/${token}/${filename}`;
                     setStreamSrc(url);
+                    streamUrlRef.current = url;
+                    retryCount.current = 0;
                     setStreamData(streamJson.data);
 
-                    // Imperative load
+                    // Imperative load with generous pre-buffer settings
+                    // Segments are 30s long — player MUST buffer enough before starting
+                    // to avoid immediate freeze after the first few seconds.
                     try {
                         const shouldAutoPlay = finalResumeTime <= 10;
                         await videoRef.current?.unloadAsync();
-                        const status = await videoRef.current?.loadAsync({ uri: url }, { shouldPlay: shouldAutoPlay }, false);
+                        await videoRef.current?.loadAsync(
+                            { uri: url },
+                            {
+                                shouldPlay: shouldAutoPlay,
+                                progressUpdateIntervalMillis: 1000,
+                            },
+                            false
+                        );
 
                         // Perform initial seek here, once.
                         if (finalResumeTime > 10 && videoRef.current) {
@@ -447,7 +473,11 @@ export default function WatchScreen() {
 
     const onStatus = useCallback((status: AVPlaybackStatus) => {
         if (!status.isLoaded) {
-            if (status.error) setError(status.error);
+            // Transient not-loaded state — don't crash on it
+            if (status.error) {
+                const isNullError = !status.error || String(status.error).toLowerCase().includes('null');
+                if (!isNullError) setError(status.error);
+            }
             return;
         }
 
@@ -456,10 +486,16 @@ export default function WatchScreen() {
         durationSV.value = status.durationMillis || 0;
         positionRef.current = status.positionMillis;
         durationRef.current = status.durationMillis || 0;
+        lastPositionRef.current = status.positionMillis;
 
         if (status.isPlaying !== isPlayingRef.current) {
             isPlayingRef.current = status.isPlaying;
             setIsPlaying(status.isPlaying);
+        }
+
+        // Detect buffering — show spinner so user knows it's loading, not frozen
+        if (status.isBuffering !== undefined) {
+            setIsBuffering(status.isBuffering);
         }
 
         const { hasNext: hn } = stateRef.current;
@@ -468,7 +504,7 @@ export default function WatchScreen() {
             if (hn) goNext();
             else router.back();
         }
-    }, []); // Empty deps means this function reference NEVER changes
+    }, []); 
 
     const goNext = () => { if (!hasNext) return; router.replace(`/watch/${id}?episodeId=${allEpisodes[currentIdx + 1].id}` as any); };
     const goPrev = () => { if (!hasPrev) return; router.replace(`/watch/${id}?episodeId=${allEpisodes[currentIdx - 1].id}` as any); };
@@ -510,6 +546,31 @@ export default function WatchScreen() {
                 resizeMode={resizeMode}
                 onStatus={onStatus}
                 setError={setError}
+                onPlayerError={async (type: string) => {
+                    if (type !== 'network_blip') return;
+                    // Max 3 auto-retries per session to avoid infinite loops
+                    if (retryCount.current >= 3) {
+                        setError('Error de reproducción. Verifica tu conexión a internet.');
+                        return;
+                    }
+                    retryCount.current += 1;
+                    const url = streamUrlRef.current;
+                    const savedPos = lastPositionRef.current;
+                    if (!url || !videoRef.current) return;
+                    try {
+                        setIsBuffering(true);
+                        await videoRef.current.unloadAsync();
+                        await new Promise(r => setTimeout(r, 1500));
+                        await videoRef.current.loadAsync({ uri: url }, { shouldPlay: true }, false);
+                        if (savedPos > 2000) {
+                            await videoRef.current.setPositionAsync(savedPos);
+                        }
+                    } catch (e) {
+                        setError('Error al reconectar el stream.');
+                    } finally {
+                        setIsBuffering(false);
+                    }
+                }}
             />
 
             {!streamSrc && (
@@ -518,6 +579,17 @@ export default function WatchScreen() {
                     <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 20 }} />
                 </View>
             )}
+
+            {/* Buffering overlay — shows spinner when player is downloading segments */}
+            {streamSrc && isBuffering && (
+                <View style={[StyleSheet.absoluteFill, s.bufferingOverlay]} pointerEvents="none">
+                    <ActivityIndicator size="large" color={Colors.primary} />
+                    <Text style={s.bufferingText}>Cargando...</Text>
+                </View>
+            )}
+
+            {/* Auto-recovery handler for network blips */}
+            {/* Passed as prop to the isolated player so it doesn't trigger re-renders */}
 
             {/* Controls Toggle Layer */}
             <TouchableOpacity
@@ -870,4 +942,6 @@ const s = StyleSheet.create({
     resumeBtnText: { color: Colors.black, fontWeight: '900', fontSize: 15 },
     startOverBtn: { width: '100%', height: 50, borderRadius: 14, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
     startOverText: { color: Colors.white, fontWeight: '700', fontSize: 14 },
+    bufferingOverlay: { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.45)', zIndex: 500 },
+    bufferingText: { color: 'rgba(255,255,255,0.7)', marginTop: 12, fontSize: 13, fontWeight: '600' },
 });

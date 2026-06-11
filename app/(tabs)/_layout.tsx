@@ -1,13 +1,10 @@
 import { Tabs } from 'expo-router';
 import { Home, Compass, Heart, User } from 'lucide-react-native';
 import { Colors } from '../../theme/colors';
-import { View, StyleSheet, Platform, Dimensions } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const { width } = Dimensions.get('window');
-
-import { useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { useFocusEffect } from 'expo-router';
 
@@ -25,8 +22,9 @@ export default function TabLayout() {
         }, [])
     );
 
-    // Calculate bottom padding based on safe area - reduced for better fit
-    const bottomPadding = insets.bottom > 0 ? Math.max(insets.bottom, 12) : 12;
+    // Respect the safe area bottom inset (gesture bar / nav buttons)
+    // On Android with hardware nav buttons, insets.bottom is 0, so we add a small base padding
+    const bottomPadding = insets.bottom > 0 ? insets.bottom : (Platform.OS === 'android' ? 4 : 0);
 
     return (
         <Tabs
@@ -34,7 +32,7 @@ export default function TabLayout() {
                 headerShown: false,
                 tabBarStyle: [
                     styles.tabBar,
-                    { bottom: bottomPadding }
+                    { paddingBottom: bottomPadding, height: 58 + bottomPadding }
                 ],
                 tabBarItemStyle: {
                     paddingTop: 8,
@@ -44,7 +42,7 @@ export default function TabLayout() {
                 tabBarShowLabel: false,
                 tabBarBackground: () => (
                     <View style={styles.blurContainer}>
-                        <BlurView intensity={90} style={StyleSheet.absoluteFill} tint="dark" />
+                        <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
                     </View>
                 ),
             }}
@@ -104,25 +102,19 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
     tabBar: {
         position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
         backgroundColor: 'transparent',
         borderTopWidth: 0,
         elevation: 0,
-        height: 64,
-        marginHorizontal: 12,
-        width: width - 24,
-        borderRadius: 32,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.5,
-        shadowRadius: 15,
+        shadowOpacity: 0,
     },
     blurContainer: {
         ...StyleSheet.absoluteFillObject,
-        borderRadius: 32,
-        overflow: 'hidden',
-        backgroundColor: 'rgba(15, 20, 45, 0.95)',
-        borderWidth: 1.5,
-        borderColor: 'rgba(0, 229, 255, 0.25)', // Slight primary color glow
+        backgroundColor: 'rgba(10, 14, 35, 0.88)',
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(0, 229, 255, 0.14)',
     },
     iconContainer: {
         alignItems: 'center',
@@ -132,7 +124,7 @@ const styles = StyleSheet.create({
     },
     indicator: {
         position: 'absolute',
-        bottom: -12,
+        bottom: -8,
         width: 6,
         height: 6,
         borderRadius: 3,

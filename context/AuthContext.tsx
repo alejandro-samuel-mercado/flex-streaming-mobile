@@ -46,12 +46,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    try {
+    const tryFetchWithToken = async (accessToken: string) => {
       const res = await fetch(API_ROUTES.AUTH.ME, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${accessToken}` },
       });
+      return res;
+    };
+
+    try {
+      let res = await tryFetchWithToken(token);
+
+      // If 401, try to refresh the access token silently
+      if (res.status === 401) {
+        const refreshToken = await Storage.get(StorageKeys.REFRESH_TOKEN);
+        if (refreshToken) {
+          try {
+            const refreshRes = await fetch(API_ROUTES.AUTH.REFRESH, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ refreshToken }),
+            });
+            if (refreshRes.ok) {
+              const refreshData = await refreshRes.json();
+              if (refreshData.success && refreshData.data?.accessToken) {
+                const newToken = refreshData.data.accessToken;
+                await Storage.set(StorageKeys.ACCESS_TOKEN, newToken);
+                if (refreshData.data.refreshToken) {
+                  await Storage.set(StorageKeys.REFRESH_TOKEN, refreshData.data.refreshToken);
+                }
+                // Retry /auth/me with the new token
+                res = await tryFetchWithToken(newToken);
+              }
+            }
+          } catch {
+            // Refresh network error — fall through to clear session
+          }
+        }
+      }
+
       const result = await res.json();
       if (result.success && result.data) {
         setUser(result.data);
@@ -65,7 +97,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
       } else {
-        await Storage.remove(StorageKeys.ACCESS_TOKEN);
+        // Token is truly invalid — clear session
+        await Storage.multiRemove([
+          StorageKeys.ACCESS_TOKEN,
+          StorageKeys.REFRESH_TOKEN,
+          StorageKeys.PROFILE_ID,
+        ]);
         setUser(null);
       }
     } catch (err) {

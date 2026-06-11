@@ -22,7 +22,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 interface HeroSlide {
     id: string; title: string; description: string; backdropUrl: string;
     rating?: number | null; year?: number | null; duration?: number | null;
-    ageRating?: string; type?: string; genres?: string[];
+    ageRating?: string; type?: string; genres?: string[]; hasVideo?: boolean;
 }
 
 export default function HeroBanner({ slides }: { slides: HeroSlide[] }) {
@@ -30,12 +30,26 @@ export default function HeroBanner({ slides }: { slides: HeroSlide[] }) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const flatListRef = useRef<FlatList>(null);
     const scrollX = useSharedValue(0);
+    const autoScrollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
         if (viewableItems.length > 0 && viewableItems[0].index != null) {
             setCurrentIndex(viewableItems[0].index);
         }
     }).current;
+
+    // Auto-scroll banner every 5 seconds
+    useEffect(() => {
+        if (slides.length <= 1) return;
+        autoScrollTimer.current = setInterval(() => {
+            setCurrentIndex(prev => {
+                const next = (prev + 1) % slides.length;
+                flatListRef.current?.scrollToIndex({ index: next, animated: true });
+                return next;
+            });
+        }, 5000);
+        return () => { if (autoScrollTimer.current) clearInterval(autoScrollTimer.current); };
+    }, [slides.length]);
 
     if (slides.length === 0) return null;
 
@@ -76,9 +90,14 @@ export default function HeroBanner({ slides }: { slides: HeroSlide[] }) {
                 <Text style={s.description} numberOfLines={2}>{item.description}</Text>
 
                 <View style={s.actions}>
-                    <TVButton style={s.playBtn} onPress={() => router.push(`/film/${item.id}` as any)}>
-                        <Play size={18} fill={Colors.black} color={Colors.black} />
-                        <Text style={s.playBtnText}>Reproducir</Text>
+                    <TVButton
+                        style={[s.playBtn, item.hasVideo === false && s.playBtnDisabled]}
+                        onPress={() => router.push(`/film/${item.id}` as any)}
+                    >
+                        <Play size={18} fill={item.hasVideo === false ? Colors.textMuted : Colors.black} color={item.hasVideo === false ? Colors.textMuted : Colors.black} />
+                        <Text style={[s.playBtnText, item.hasVideo === false && { color: Colors.textMuted }]}>
+                            {item.hasVideo === false ? 'Próximamente' : 'Reproducir'}
+                        </Text>
                     </TVButton>
                     <TVButton style={s.plusBtn} onPress={() => router.push(`/film/${item.id}` as any)}>
                         <Plus size={20} color={Colors.white} />
@@ -152,6 +171,7 @@ const s = StyleSheet.create({
     description: { fontSize: 14, color: 'rgba(255,255,255,0.7)', lineHeight: 22, marginBottom: 20 },
     actions: { flexDirection: 'row', gap: 12 },
     playBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.primary, paddingHorizontal: 32, paddingVertical: 14, borderRadius: 14, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+    playBtnDisabled: { backgroundColor: 'rgba(255,255,255,0.1)', shadowOpacity: 0 },
     playBtnText: { fontSize: 14, fontWeight: '900', color: Colors.black, textTransform: 'uppercase', letterSpacing: 1 },
     plusBtn: { width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
     dots: { position: 'absolute', bottom: 12, left: 20, flexDirection: 'row', gap: 6 },
