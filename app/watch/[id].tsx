@@ -511,9 +511,7 @@ export default function WatchScreen() {
 
     if (loading && !content) return (
         <View style={s.loader}>
-            <Text style={s.logoText}>NUBA</Text>
-            <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 20 }} />
-            <Text style={s.loaderText}>Preparando stream...</Text>
+            <ActivityIndicator size="large" color={Colors.primary} />
         </View>
     );
 
@@ -575,18 +573,11 @@ export default function WatchScreen() {
 
             {!streamSrc && (
                 <View style={[s.loader, StyleSheet.absoluteFill]}>
-                    <Text style={s.logoText}>NUBA</Text>
-                    <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 20 }} />
+                    <ActivityIndicator size="large" color={Colors.primary} />
                 </View>
             )}
 
-            {/* Buffering overlay — shows spinner when player is downloading segments */}
-            {streamSrc && isBuffering && (
-                <View style={[StyleSheet.absoluteFill, s.bufferingOverlay]} pointerEvents="none">
-                    <ActivityIndicator size="large" color={Colors.primary} />
-                    <Text style={s.bufferingText}>Cargando...</Text>
-                </View>
-            )}
+
 
             {/* Auto-recovery handler for network blips */}
             {/* Passed as prop to the isolated player so it doesn't trigger re-renders */}
