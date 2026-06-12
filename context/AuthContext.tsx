@@ -27,7 +27,7 @@ interface AuthUser {
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
-  login: (accessToken: string, refreshToken: string, userData?: AuthUser) => void;
+  login: (accessToken: string, refreshToken: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -117,19 +117,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetchUser();
   }, [fetchUser]);
 
-  const login = async (accessToken: string, refreshToken: string, userData?: AuthUser) => {
+  const login = async (accessToken: string, refreshToken: string) => {
     await Storage.set(StorageKeys.ACCESS_TOKEN, accessToken);
     await Storage.set(StorageKeys.REFRESH_TOKEN, refreshToken);
 
-    if (userData) {
-      setUser(userData);
-      if (userData.profiles?.[0]) {
-        await Storage.set(StorageKeys.PROFILE_ID, userData.profiles[0].id);
-      }
-      setLoading(false);
-    } else {
-      fetchUser();
-    }
+    // Always fetch the complete user object from /auth/me to guarantee profiles are loaded
+    await fetchUser();
   };
 
   const logout = async () => {

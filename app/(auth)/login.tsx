@@ -38,7 +38,7 @@ export default function LoginScreen() {
       const res = await fetch(API_ROUTES.AUTH.LOGIN, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
       const result = await res.json();
       if (!result.success) throw new Error(result.error ?? 'Error al iniciar sesión');
-      await login(result.data.accessToken, result.data.refreshToken, result.data.user);
+      await login(result.data.accessToken, result.data.refreshToken);
       router.replace('/(tabs)' as any);
     } catch (err) { setError(err instanceof Error ? err.message : 'Error inesperado'); }
     setLoading(false);
