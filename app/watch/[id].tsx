@@ -326,8 +326,9 @@ export default function WatchScreen() {
                     const filename = vf?.masterPlaylist?.split('/').pop() || 'master.m3u8';
                     // Use the storage node URL if provided, otherwise fall back to the main API
                     // If streamBaseUrl is used, it does NOT contain /api, so we must add it here, or ensure we strip it if it already has it.
-                    // A safe way is to check if baseUrl ends with /api, or just use the web app's approach:
-                    const streamHost = streamBaseUrl || API_BASE_URL.replace('/api', '');
+                    // Safely strip /api from streamBaseUrl to avoid /api/api/stream/hls double prefix
+                    const safeStreamBase = streamBaseUrl ? streamBaseUrl.replace(/\/api\/?$/, '') : null;
+                    const streamHost = safeStreamBase || API_BASE_URL.replace(/\/api\/?$/, '');
                     const url = `${streamHost}/api/stream/hls/${videoFileId}/${token}/${filename}`;
                     setStreamSrc(url);
                     streamUrlRef.current = url;
