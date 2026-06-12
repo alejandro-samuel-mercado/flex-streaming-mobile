@@ -10,6 +10,7 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { Colors } from '../../theme/colors';
 import { API_ROUTES, API_BASE_URL } from '../../lib/api-routes';
 import { fetchApi } from '../../lib/api-client';
+import { parseVTT, SubtitleCue } from '../../lib/vtt-parser';
 import { Storage as AppStorage, StorageKeys } from '../../lib/storage';
 import { isTV, scale } from '../../lib/responsive';
 import { useAuth } from '../../context/AuthContext';
@@ -86,6 +87,13 @@ export default function WatchScreen() {
     const [streamData, setStreamData] = useState<any>(null);
     const [activeMenu, setActiveMenu] = useState<'episodes' | 'subs' | 'audio' | 'quality' | null>(null);
     const [selectedQuality, setSelectedQuality] = useState('Auto');
+    
+    // Subtitles Engine State
+    const [selectedSubtitle, setSelectedSubtitle] = useState<any>(null);
+    const [subtitleCues, setSubtitleCues] = useState<SubtitleCue[]>([]);
+    const subtitleCuesRef = useRef<SubtitleCue[]>([]);
+    const [currentSubtitleText, setCurrentSubtitleText] = useState<string>('');
+    
     const [isLocked, setIsLocked] = useState(false);
     const [showLockIndicator, setShowLockIndicator] = useState(false);
     const lockTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -99,6 +107,44 @@ export default function WatchScreen() {
     const seekProgress = useSharedValue(0);
     const positionRef = useRef(0);
     const durationRef = useRef(0);
+
+    // Fetch and parse VTT subtitle file when selectedSubtitle changes
+    useEffect(() => {
+        if (!selectedSubtitle || !selectedSubtitle.url) {
+            setSubtitleCues([]);
+            subtitleCuesRef.current = [];
+            setCurrentSubtitleText('');
+            return;
+        }
+
+        const fetchSubtitles = async () => {
+            try {
+                // Ensure the URL is absolute
+                const baseUrl = streamData?.streamBaseUrl || API_BASE_URL.replace('/api', '');
+                const url = selectedSubtitle.url.startsWith('http') 
+                    ? selectedSubtitle.url 
+                    : `${baseUrl}${selectedSubtitle.url.startsWith('/') ? '' : '/'}${selectedSubtitle.url}`;
+
+                const response = await fetch(url);
+                if (response.ok) {
+                    const text = await response.text();
+                    const parsedCues = parseVTT(text);
+                    setSubtitleCues(parsedCues);
+                    subtitleCuesRef.current = parsedCues;
+                } else {
+                    console.error('[WatchScreen] VTT Fetch failed:', response.status);
+                    setSubtitleCues([]);
+                    subtitleCuesRef.current = [];
+                }
+            } catch (error) {
+                console.error('[WatchScreen] Error fetching VTT:', error);
+                setSubtitleCues([]);
+                subtitleCuesRef.current = [];
+            }
+        };
+
+        fetchSubtitles();
+    }, [selectedSubtitle, streamData?.streamBaseUrl]);
 
     const onSeek = async (percent: number) => {
         try {
@@ -500,6 +546,17 @@ export default function WatchScreen() {
             setIsBuffering(status.isBuffering);
         }
 
+        // --- Subtitle Synchronization Engine ---
+        if (subtitleCuesRef.current && subtitleCuesRef.current.length > 0) {
+            const posSec = status.positionMillis / 1000;
+            // Find the active cue
+            const activeCue = subtitleCuesRef.current.find(cue => posSec >= cue.start && posSec <= cue.end);
+            setCurrentSubtitleText(activeCue ? activeCue.text : '');
+        } else {
+            // Keep it clear if no subtitles are active to avoid hanging text
+            setCurrentSubtitleText('');
+        }
+
         const { hasNext: hn } = stateRef.current;
 
         if (status.didJustFinish) {
@@ -572,6 +629,13 @@ export default function WatchScreen() {
                     }
                 }}
             />
+
+            {/* Custom VTT Subtitles Overlay */}
+            {currentSubtitleText ? (
+                <View style={s.subtitleOverlay} pointerEvents="none">
+                    <Text style={s.subtitleText}>{currentSubtitleText}</Text>
+                </View>
+            ) : null}
 
             {!streamSrc && (
                 <View style={[s.loader, StyleSheet.absoluteFill]}>
@@ -779,15 +843,19 @@ export default function WatchScreen() {
                             <ScrollView showsVerticalScrollIndicator={false}>
                                 {activeMenu === 'subs' && (
                                     <>
-                                        <TouchableOpacity style={s.menuItem} onPress={() => setActiveMenu(null)}>
+                                        <TouchableOpacity style={[s.menuItem, !selectedSubtitle && s.menuItemActive]} onPress={() => { setSelectedSubtitle(null); setActiveMenu(null); }}>
                                             <Text style={s.menuItemText}>Desactivados</Text>
-                                            <Check size={16} color={Colors.primary} />
+                                            {!selectedSubtitle && <Check size={16} color={Colors.primary} />}
                                         </TouchableOpacity>
-                                        {(streamData?.subtitleTracks || currentEpisode?.videoFiles?.[0]?.subtitleTracks || content.videoFiles?.[0]?.subtitleTracks)?.map((sub: any, i: number) => (
-                                            <TouchableOpacity key={i} style={s.menuItem} onPress={() => setActiveMenu(null)}>
-                                                <Text style={s.menuItemText}>{sub.label || sub.language}</Text>
-                                            </TouchableOpacity>
-                                        ))}
+                                        {(streamData?.subtitleTracks || currentEpisode?.videoFiles?.[0]?.subtitleTracks || content.videoFiles?.[0]?.subtitleTracks)?.map((sub: any, i: number) => {
+                                            const isActive = selectedSubtitle?.url === sub.url;
+                                            return (
+                                                <TouchableOpacity key={i} style={[s.menuItem, isActive && s.menuItemActive]} onPress={() => { setSelectedSubtitle(sub); setActiveMenu(null); }}>
+                                                    <Text style={s.menuItemText}>{sub.label || sub.language}</Text>
+                                                    {isActive && <Check size={16} color={Colors.primary} />}
+                                                </TouchableOpacity>
+                                            );
+                                        })}
                                     </>
                                 )}
 
@@ -881,6 +949,8 @@ function TVPlaybackButton({ children, onPress, onFocus, style }: any) {
 const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.black },
     video: { ...StyleSheet.absoluteFillObject },
+    subtitleOverlay: { position: 'absolute', bottom: '15%', left: 40, right: 40, alignItems: 'center', justifyContent: 'flex-end', zIndex: 50 },
+    subtitleText: { color: Colors.white, fontSize: 18, fontWeight: '800', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3, backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 6, overflow: 'hidden' },
     loader: { flex: 1, backgroundColor: Colors.black, justifyContent: 'center', alignItems: 'center' },
     logoText: { fontSize: 36, fontWeight: '900', color: Colors.primary, letterSpacing: 4, textTransform: 'uppercase' },
     loaderText: { color: Colors.textMuted, marginTop: 12, fontSize: 14 },
