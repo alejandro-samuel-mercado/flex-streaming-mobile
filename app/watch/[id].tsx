@@ -153,10 +153,8 @@ export default function WatchScreen() {
                 const targetPos = Math.floor(dur * percent);
                 positionSV.value = targetPos;
                 positionRef.current = targetPos;
+                // Avoid calling playAsync right after setPositionAsync, as it can cause ExoPlayer to freeze.
                 await videoRef.current?.setPositionAsync(targetPos);
-                if (isPlaying) {
-                    await videoRef.current?.playAsync();
-                }
             }
         } catch (e) {
             console.error("Seek error:", e);
@@ -696,7 +694,6 @@ export default function WatchScreen() {
                                 positionRef.current = newPos;
                                 try {
                                     await videoRef.current?.setPositionAsync(newPos);
-                                    if (isPlaying) await videoRef.current?.playAsync();
                                 } catch (e) { }
                             }} onFocus={() => setShowControls(true)}>
                                 <RotateCcw size={scale(32)} color="rgba(255,255,255,0.8)" />
@@ -719,7 +716,6 @@ export default function WatchScreen() {
                                 positionRef.current = newPos;
                                 try {
                                     await videoRef.current?.setPositionAsync(newPos);
-                                    if (isPlaying) await videoRef.current?.playAsync();
                                 } catch (e) { }
                             }} onFocus={() => setShowControls(true)}>
                                 <RotateCw size={scale(32)} color="rgba(255,255,255,0.8)" />
