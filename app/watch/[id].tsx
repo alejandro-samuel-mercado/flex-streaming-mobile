@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, useWindowDimensions, ScrollView, Pressable, Platform, FlatList } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import { useEventListener } from 'expo';
 import { ArrowLeft, Play, Pause, SkipBack, SkipForward, List, X, AlertCircle, Volume2, VolumeX, MessageSquare, Settings, Languages, RotateCcw, RotateCw, Maximize, Minimize, Smartphone, Check, Lock, Unlock, Clock } from 'lucide-react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -22,36 +23,59 @@ import { BlurView } from 'expo-blur';
 
 // Isolated Video component to prevent any UI-induced re-renders
 const NobaVideoPlayer = React.memo(({
-    videoRef,
+    streamSrc,
     resizeMode,
     onStatus,
     setError,
     onPlayerError,
+    playerRef,
 }: any) => {
+    const player = useVideoPlayer(streamSrc, player => {
+        player.play();
+    });
+
+    useEffect(() => {
+        if (playerRef) playerRef.current = player;
+    }, [player, playerRef]);
+
+    useEventListener(player, 'statusChange', ({ status, error }) => {
+        if (status === 'error') {
+            setError('Error al cargar el video. Verifica tu conexión.');
+            onPlayerError?.('network_blip');
+        }
+    });
+
+    useEventListener(player, 'timeUpdate', ({ currentTime }) => {
+        onStatus({
+            isLoaded: true,
+            positionMillis: currentTime * 1000,
+            durationMillis: (player.duration || 0) * 1000,
+            isPlaying: player.playing,
+            isBuffering: player.status === 'loading' || player.status === 'buffering',
+            didJustFinish: player.status === 'idle' && currentTime >= player.duration
+        });
+    });
+    
+    useEventListener(player, 'playingChange', ({ isPlaying }) => {
+        onStatus({
+            isLoaded: true,
+            positionMillis: player.currentTime * 1000,
+            durationMillis: (player.duration || 0) * 1000,
+            isPlaying: isPlaying,
+            isBuffering: player.status === 'loading' || player.status === 'buffering',
+        });
+    });
+
     return (
-        <Video
+        <VideoView
             key="noba-video-player"
-            ref={videoRef}
+            player={player}
             style={s.video}
-            resizeMode={resizeMode}
-            onPlaybackStatusUpdate={onStatus}
-            progressUpdateIntervalMillis={1000}
-            useNativeControls={false}
-            shouldCorrectPitch={false}
-            onError={(err) => {
-                // expo-av fires "player error:null" on network blips (not fatal)
-                // Only show a real error if it's meaningful
-                const isNullError = !err || err === 'null' || String(err).toLowerCase().includes('null');
-                if (isNullError) {
-                    onPlayerError?.('network_blip');
-                } else {
-                    console.error('Video fatal error:', err);
-                    setError('Error al cargar el video. Verifica tu conexión.');
-                }
-            }}
+            contentFit={resizeMode === 'contain' ? 'contain' : 'cover'}
+            nativeControls={false}
         />
     );
-}, (prev, next) => prev.resizeMode === next.resizeMode);
+}, (prev, next) => prev.resizeMode === next.resizeMode && prev.streamSrc === next.streamSrc);
 
 export default function WatchScreen() {
     const { width: SW, height: SH } = useWindowDimensions();
@@ -80,7 +104,7 @@ export default function WatchScreen() {
     const { width: W, height: H } = useWindowDimensions();
     const [isPlaying, setIsPlaying] = useState(true);
     const [isMuted, setIsMuted] = useState(false);
-    const [resizeMode, setResizeMode] = useState<ResizeMode>(ResizeMode.CONTAIN);
+    const [resizeMode, setResizeMode] = useState<'contain' | 'cover'>('contain');
     const positionSV = useSharedValue(0);
     const durationSV = useSharedValue(0);
     const [displayTime, setDisplayTime] = useState({ pos: 0, dur: 0 });
@@ -99,7 +123,7 @@ export default function WatchScreen() {
     const lockTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [resumeTime, setResumeTime] = useState<number | null>(null);
     const [showResumePopup, setShowResumePopup] = useState(false);
-    const videoRef = useRef<Video>(null);
+    const playerRef = useRef<any>(null);
     const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -153,8 +177,8 @@ export default function WatchScreen() {
                 const targetPos = Math.floor(dur * percent);
                 positionSV.value = targetPos;
                 positionRef.current = targetPos;
-                // Avoid calling playAsync right after setPositionAsync, as it can cause ExoPlayer to freeze.
-                await videoRef.current?.setPositionAsync(targetPos);
+                // Avoid calling play right after setPosition as it can freeze
+                if (playerRef.current) playerRef.current.currentTime = targetPos / 1000;
             }
         } catch (e) {
             console.error("Seek error:", e);
@@ -339,19 +363,14 @@ export default function WatchScreen() {
                     // to avoid immediate freeze after the first few seconds.
                     try {
                         const shouldAutoPlay = finalResumeTime <= 10;
-                        await videoRef.current?.unloadAsync();
-                        await videoRef.current?.loadAsync(
-                            { uri: url },
-                            {
-                                shouldPlay: shouldAutoPlay,
-                                progressUpdateIntervalMillis: 1000,
-                            },
-                            false
-                        );
+                        if (playerRef.current) {
+                            if (shouldAutoPlay) playerRef.current.play();
+                            else playerRef.current.pause();
+                        }
 
                         // Perform initial seek here, once.
-                        if (finalResumeTime > 10 && videoRef.current) {
-                            await videoRef.current.setPositionAsync(finalResumeTime * 1000);
+                        if (finalResumeTime > 10 && playerRef.current) {
+                            playerRef.current.currentTime = finalResumeTime;
                             hasInitialSeeked.current = true;
                         }
                     } catch (e) { }
@@ -493,7 +512,7 @@ export default function WatchScreen() {
     }, []);
 
     const toggleResizeMode = () => {
-        setResizeMode(prev => prev === ResizeMode.CONTAIN ? ResizeMode.COVER : ResizeMode.CONTAIN);
+        setResizeMode(prev => prev === 'contain' ? 'cover' : 'contain');
     };
 
     const formatTime = (ms: number) => {
@@ -523,7 +542,7 @@ export default function WatchScreen() {
 
     const isPlayingRef = useRef(true);
 
-    const onStatus = useCallback((status: AVPlaybackStatus) => {
+    const onStatus = useCallback((status: any) => {
         if (!status.isLoaded) {
             // Transient not-loaded state — don't crash on it
             if (status.error) {
@@ -603,13 +622,13 @@ export default function WatchScreen() {
 
             {/* Video Layer - Isolated in a bunker */}
             <NobaVideoPlayer
-                videoRef={videoRef}
+                streamSrc={streamSrc}
+                playerRef={playerRef}
                 resizeMode={resizeMode}
                 onStatus={onStatus}
                 setError={setError}
                 onPlayerError={async (type: string) => {
                     if (type !== 'network_blip') return;
-                    // Max 3 auto-retries per session to avoid infinite loops
                     if (retryCount.current >= 3) {
                         setError('Error de reproducción. Verifica tu conexión a internet.');
                         return;
@@ -617,14 +636,14 @@ export default function WatchScreen() {
                     retryCount.current += 1;
                     const url = streamUrlRef.current;
                     const savedPos = lastPositionRef.current;
-                    if (!url || !videoRef.current) return;
+                    if (!url || !playerRef.current) return;
                     try {
                         setIsBuffering(true);
-                        await videoRef.current.unloadAsync();
+                        playerRef.current.replace(url);
                         await new Promise(r => setTimeout(r, 1500));
-                        await videoRef.current.loadAsync({ uri: url }, { shouldPlay: true }, false);
+                        playerRef.current.play();
                         if (savedPos > 2000) {
-                            await videoRef.current.setPositionAsync(savedPos);
+                            playerRef.current.currentTime = savedPos / 1000;
                         }
                     } catch (e) {
                         setError('Error al reconectar el stream.');
@@ -692,35 +711,31 @@ export default function WatchScreen() {
 
                         {/* Center */}
                         <View style={s.centerControls}>
-                            <TVPlaybackButton onPress={async () => {
+                            <TVPlaybackButton onPress={() => {
                                 const newPos = Math.max(0, positionRef.current - 20000);
                                 positionSV.value = newPos;
                                 positionRef.current = newPos;
-                                try {
-                                    await videoRef.current?.setPositionAsync(newPos);
-                                } catch (e) { }
+                                if (playerRef.current) playerRef.current.currentTime = newPos / 1000;
                             }} onFocus={() => setShowControls(true)}>
                                 <RotateCcw size={scale(32)} color="rgba(255,255,255,0.8)" />
                                 <Text style={s.skipText}>20s</Text>
                             </TVPlaybackButton>
-                            <TVPlaybackButton style={s.playBtn} onPress={async () => {
+                            <TVPlaybackButton style={s.playBtn} onPress={() => {
                                 if (isPlaying) {
                                     setIsPlaying(false);
-                                    await videoRef.current?.pauseAsync();
+                                    playerRef.current?.pause();
                                 } else {
                                     setIsPlaying(true);
-                                    await videoRef.current?.playAsync();
+                                    playerRef.current?.play();
                                 }
                             }} onFocus={() => setShowControls(true)}>
                                 {isPlaying ? <Pause size={scale(36)} fill={Colors.white} color={Colors.white} /> : <Play size={scale(36)} fill={Colors.white} color={Colors.white} style={{ marginLeft: 4 }} />}
                             </TVPlaybackButton>
-                            <TVPlaybackButton onPress={async () => {
+                            <TVPlaybackButton onPress={() => {
                                 const newPos = Math.min(durationRef.current, positionRef.current + 20000);
                                 positionSV.value = newPos;
                                 positionRef.current = newPos;
-                                try {
-                                    await videoRef.current?.setPositionAsync(newPos);
-                                } catch (e) { }
+                                if (playerRef.current) playerRef.current.currentTime = newPos / 1000;
                             }} onFocus={() => setShowControls(true)}>
                                 <RotateCw size={scale(32)} color="rgba(255,255,255,0.8)" />
                                 <Text style={s.skipText}>20s</Text>
@@ -751,12 +766,10 @@ export default function WatchScreen() {
 
                                 <View style={s.actionsRow}>
                                     {/* Volume */}
-                                    <TouchableOpacity onPress={async () => {
+                                    <TouchableOpacity onPress={() => {
                                         const nextMute = !isMuted;
                                         setIsMuted(nextMute);
-                                        try {
-                                            await videoRef.current?.setIsMutedAsync(nextMute);
-                                        } catch (e) { }
+                                        if (playerRef.current) playerRef.current.muted = nextMute;
                                     }} style={s.actionBtn}>
                                         {isMuted ? <VolumeX size={20} color={Colors.white} /> : <Volume2 size={20} color={Colors.white} />}
                                     </TouchableOpacity>
@@ -774,7 +787,7 @@ export default function WatchScreen() {
                                     {W > H && <View style={s.divider} />}
                                     {W > H && (
                                         <TouchableOpacity onPress={toggleResizeMode} style={s.actionBtn}>
-                                            {resizeMode === ResizeMode.CONTAIN ? <Maximize size={18} color={Colors.white} /> : <Minimize size={18} color={Colors.white} />}
+                                            {resizeMode === 'contain' ? <Maximize size={18} color={Colors.white} /> : <Minimize size={18} color={Colors.white} />}
                                         </TouchableOpacity>
                                     )}
                                     <TouchableOpacity onPress={() => setActiveMenu('subs')} style={s.actionBtn}><MessageSquare size={18} color={Colors.white} /></TouchableOpacity>
@@ -863,12 +876,22 @@ export default function WatchScreen() {
 
                                 {activeMenu === 'audio' && (
                                     <>
-                                        {(streamData?.audioTracks || currentEpisode?.videoFiles?.[0]?.audioTracks || content.videoFiles?.[0]?.audioTracks)?.map((aud: any, i: number) => (
-                                            <TouchableOpacity key={i} style={s.menuItem} onPress={() => setActiveMenu(null)}>
-                                                <Text style={s.menuItemText}>{aud.label || aud.language}</Text>
-                                                {aud.isDefault && <Check size={16} color={Colors.primary} />}
+                                        {(playerRef.current?.availableAudioTracks || []).map((aud: any, i: number) => (
+                                            <TouchableOpacity key={i} style={s.menuItem} onPress={() => {
+                                                if (playerRef.current) {
+                                                    playerRef.current.audioTrack = aud;
+                                                }
+                                                setActiveMenu(null);
+                                            }}>
+                                                <Text style={s.menuItemText}>{aud.language || aud.name || `Pista ${i + 1}`}</Text>
+                                                {playerRef.current?.audioTrack?.name === aud.name && <Check size={16} color={Colors.primary} />}
                                             </TouchableOpacity>
                                         ))}
+                                        {(!playerRef.current?.availableAudioTracks || playerRef.current.availableAudioTracks.length === 0) && (
+                                            <View style={s.menuItem}>
+                                                <Text style={s.menuItemText}>No hay pistas de audio disponibles.</Text>
+                                            </View>
+                                        )}
                                     </>
                                 )}
 

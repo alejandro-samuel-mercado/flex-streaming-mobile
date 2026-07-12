@@ -37,7 +37,9 @@
         {
           "initialOrientation": "DEFAULT"
         }
-      ]
+      ],
+      "expo-video",
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true
