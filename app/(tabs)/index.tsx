@@ -1,15 +1,16 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { ScrollView, View, Text, StyleSheet, RefreshControl, Dimensions, TouchableOpacity, Image } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Dimensions, Image, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Colors } from '../../theme/colors';
-import { API_ROUTES, resolveImageUrl } from '../../lib/api-routes';
-import { Storage, StorageKeys } from '../../lib/storage';
-import { fetchApi } from '../../lib/api-client';
-import HeroBanner from '../../components/catalog/HeroBanner';
-import FilmRow from '../../components/catalog/FilmRow';
 import FAQSection from '../../components/catalog/FAQSection';
+import FilmRow from '../../components/catalog/FilmRow';
+import HeroBanner from '../../components/catalog/HeroBanner';
 import Skeleton from '../../components/ui/Skeleton';
+import { fetchApi } from '../../lib/api-client';
+import { API_ROUTES, resolveImageUrl } from '../../lib/api-routes';
+import { scale, UI_SPACING } from '../../lib/responsive';
+import { Storage, StorageKeys } from '../../lib/storage';
+import { Colors } from '../../theme/colors';
 
 // Static platform data — same logos as TV version (local PNG assets)
 const STATIC_PLATFORMS = [
@@ -21,8 +22,7 @@ const STATIC_PLATFORMS = [
     { key: 'paramount',   name: 'Paramount+',  logoReq: require('../../assets/platforms/paramount.png'),   brandColor: '#0064FF' },
     { key: 'crunchyroll', name: 'Crunchyroll', logoReq: require('../../assets/platforms/crunchyroll.png'), brandColor: '#F47521' },
     { key: 'hulu',        name: 'Hulu',        logoReq: require('../../assets/platforms/hulu.png'),        brandColor: '#1CE783' },
-    { key: 'peacock',     name: 'Peacock',     logoReq: require('../../assets/platforms/peacock.png'),     brandColor: '#000000' },
-    { key: 'youtube',     name: 'YouTube',     logoReq: require('../../assets/platforms/youtube.png'),     brandColor: '#FF0000' },
+  
 ];
 
 interface HomepageData {
@@ -67,13 +67,8 @@ export default function HomeScreen() {
     // Bottom padding must clear the tab bar (58px) + safe area
     const bottomPadding = insets.bottom + 80;
 
-    const load = useCallback(async (isRefresh = false) => {
-        if (isRefresh) setRefreshing(true);
-        else setLoading(true);
-
+    const loadContinueWatching = useCallback(async () => {
         const token = await Storage.get(StorageKeys.ACCESS_TOKEN);
-
-        // Fetch continue watching ONLY if logged in
         if (token) {
             try {
                 const cwJson = await fetchApi<any>(`${API_ROUTES.HISTORY.BASE}/continue`);
@@ -90,6 +85,13 @@ export default function HomeScreen() {
         } else {
             setContinueWatching([]);
         }
+    }, []);
+
+    const load = useCallback(async (isRefresh = false) => {
+        if (isRefresh) setRefreshing(true);
+        else setLoading(true);
+
+        await loadContinueWatching();
 
         // Fetch homepage data
         try {
@@ -106,6 +108,13 @@ export default function HomeScreen() {
     useEffect(() => {
         load();
     }, [load]);
+
+    useFocusEffect(
+        useCallback(() => {
+            // Refrescar solo "Continuar viendo" cada vez que la pantalla vuelve a tener el foco
+            loadContinueWatching();
+        }, [loadContinueWatching])
+    );
 
     const onRefresh = useCallback(() => {
         load(true);
@@ -212,31 +221,31 @@ const s = StyleSheet.create({
     screen: { flex: 1, backgroundColor: Colors.bg },
     content: { paddingBottom: 20 },
     loader: { flex: 1, backgroundColor: Colors.bg },
-    platformsSection: { marginBottom: 32 },
+    platformsSection: { marginBottom: scale(32) },
     sectionTitle: {
-        fontSize: 20,
+        fontSize: scale(20, 1.8),
         fontWeight: '900',
         color: Colors.white,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
-        paddingHorizontal: 20,
+        paddingHorizontal: UI_SPACING.horizontal,
     },
     sectionSub: {
-        fontSize: 12,
+        fontSize: scale(12, 1.5),
         color: Colors.textMuted,
         fontWeight: '500',
         marginTop: 4,
-        marginBottom: 16,
-        paddingHorizontal: 20,
+        marginBottom: scale(16),
+        paddingHorizontal: UI_SPACING.horizontal,
     },
     platformsList: {
-        paddingHorizontal: 20,
-        gap: 12,
+        paddingHorizontal: UI_SPACING.horizontal,
+        gap: scale(12),
     },
     platformCard: {
-        width: 90,
-        height: 90,
-        borderRadius: 45,
+        width: scale(80),
+        height: scale(80),
+        borderRadius: scale(40),
         borderWidth: 1.5,
         borderColor: 'rgba(255,255,255,0.1)',
         justifyContent: 'center',
@@ -245,7 +254,7 @@ const s = StyleSheet.create({
         backgroundColor: 'rgba(255,255,255,0.06)',
     },
     platformLogo: {
-        width: '72%',
-        height: '72%',
+        width: '70%',
+        height: '70%',
     },
 });

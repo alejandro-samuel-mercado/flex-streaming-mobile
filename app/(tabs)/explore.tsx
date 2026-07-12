@@ -1,15 +1,14 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, Dimensions, Pressable, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
+import { ListFilter, Search, X } from 'lucide-react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Dimensions, FlatList, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors } from '../../theme/colors';
-import { API_ROUTES, resolveImageUrl } from '../../lib/api-routes';
-import { fetchApi } from '../../lib/api-client';
-import { Search, X, ListFilter } from 'lucide-react-native';
-import { getContentTypeLabel, CONTENT_TYPES_LIST } from '../../lib/content-types';
 import FilmCard from '../../components/catalog/FilmCard';
-import Animated, { FadeIn, FadeOut, Layout, useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { fetchApi } from '../../lib/api-client';
+import { API_ROUTES } from '../../lib/api-routes';
+import { CONTENT_TYPES_LIST, getContentTypeLabel } from '../../lib/content-types';
 import { isTV, scale, UI_SPACING } from '../../lib/responsive';
+import { Colors } from '../../theme/colors';
 
 const { width: SW } = Dimensions.get('window');
 const COLS = isTV ? 5 : 3;
@@ -22,6 +21,7 @@ export default function ExploreScreen() {
   const bottomPadding = insets.bottom > 0 ? insets.bottom + 80 : 100;
   const [content, setContent] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
   const [type, setType] = useState<string | null>(null);
   const [genreId, setGenreId] = useState<string | null>(null);
@@ -31,6 +31,7 @@ export default function ExploreScreen() {
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
     const fetchMetadata = async () => {
@@ -48,22 +49,41 @@ export default function ExploreScreen() {
 
   useEffect(() => {
     const load = async () => {
-      setLoading(true);
+      if (page === 1) setLoading(true);
       try {
-        const params = new URLSearchParams({ page: page.toString(), limit: '30', sort: 'az' });
-        if (search) params.set('search', search);
-        if (type) params.set('type', type);
-        if (genreId) params.set('genreId', genreId);
-        if (platformId) params.set('platformId', platformId);
+        const p = new URLSearchParams();
+        p.append('page', String(page));
+        p.append('limit', '30');
+        p.append('sort', 'recent');
+        if (search) p.append('search', search);
+        if (type) p.set('type', type);
+        if (genreId) p.set('genreId', genreId);
+        if (platformId) p.set('platformId', platformId);
         
-        const json = await fetchApi<any>(`${API_ROUTES.CONTENT.LIST}?${params}`);
-        if (json.success) { setContent(json.data); setTotal(json.meta?.total || json.pagination?.total || 0); }
+        const json = await fetchApi<any>(`${API_ROUTES.CONTENT.LIST}?${p}`);
+        if (json.success) { 
+          const newData = json.data || [];
+          setContent(prev => page === 1 ? newData : [...prev, ...newData]); 
+          setTotal(json.meta?.total || json.pagination?.total || 0); 
+          setHasMore(newData.length === 30);
+        }
       } catch (e) { console.error(e); }
       setLoading(false);
+      setIsLoadingMore(false);
     };
-    const t = setTimeout(load, 300);
+    
+    // Si estamos cambiando de página (scroll infinito), cargamos sin delay.
+    // Solo usamos debounce (300ms) cuando se escribe en la búsqueda o se cambia un filtro.
+    const delay = page === 1 ? 300 : 0;
+    const t = setTimeout(load, delay);
     return () => clearTimeout(t);
   }, [page, search, type, genreId, platformId]);
+
+  // Reset page and hasMore when filters change
+  useEffect(() => {
+    setPage(1);
+    setHasMore(true);
+  }, [search, type, genreId, platformId]);
 
   const renderItem = useCallback(({ item }: { item: any }) => {
     const poster = item.thumbnails?.find((t: any) => t.type === 'POSTER')?.url;
@@ -86,7 +106,7 @@ export default function ExploreScreen() {
       
       <View style={s.searchBarContainer}>
         <View style={s.searchBar}>
-          <Search size={scale(18)} color={Colors.primary} />
+          <Search size={scale(22)} color={Colors.primary} />
           <TextInput 
             style={s.searchInput} 
             placeholder="Películas, series, géneros..." 
@@ -96,7 +116,7 @@ export default function ExploreScreen() {
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')}>
-              <X size={scale(18)} color={Colors.textMuted} />
+              <X size={scale(22)} color={Colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
@@ -104,76 +124,81 @@ export default function ExploreScreen() {
           style={[s.filterToggle, showFilters && s.filterToggleActive]} 
           onPress={() => setShowFilters(!showFilters)}
         >
-          <ListFilter size={scale(20)} color={showFilters ? Colors.black : Colors.primary} />
+          <ListFilter size={scale(24)} color={showFilters ? Colors.black : Colors.primary} />
         </TouchableOpacity>
       </View>
 
       {showFilters && (
-        <Animated.View entering={FadeIn} exiting={FadeOut} layout={Layout} style={s.filtersWrapper}>
-          <View style={s.filterGroup}>
-            <Text style={s.filterLabel}>Tipo</Text>
-            <FlatList
-              data={[{ type: null, label: 'Todos' }, ...(CONTENT_TYPES_LIST || []).map(t => ({ type: t, label: getContentTypeLabel(t) }))]}
-              horizontal showsHorizontalScrollIndicator={false}
-              contentContainerStyle={s.filterRow}
-              renderItem={({ item: f }) => (
-                <FilterChip 
-                  label={f.label} 
-                  active={type === f.type} 
-                  onPress={() => { setType(f.type); setPage(1); }} 
-                />
-              )}
-              keyExtractor={(item) => item.type || 'all'}
-            />
-          </View>
+        <View style={[StyleSheet.absoluteFill, { zIndex: 9999, elevation: 9999 }]}>
+          <Pressable style={s.modalOverlay} onPress={() => setShowFilters(false)}>
+            <View style={s.modalContent} onStartShouldSetResponder={() => true}>
+              <View style={s.filterHeader}>
+                <Text style={s.modalTitle}>Filtros</Text>
+                <TouchableOpacity onPress={() => setShowFilters(false)} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+                  <X size={24} color={Colors.white} />
+                </TouchableOpacity>
+              </View>
 
-          {genres.length > 0 && (
-            <View style={s.filterGroup}>
-              <Text style={s.filterLabel}>Géneros</Text>
-              <FlatList
-                data={[{ id: null, name: 'Todos' }, ...genres]}
-                horizontal showsHorizontalScrollIndicator={false}
-                contentContainerStyle={s.filterRow}
-                renderItem={({ item: g }) => (
-                  <FilterChip 
-                    label={g.name} 
-                    active={genreId === g.id} 
-                    onPress={() => { setGenreId(g.id); setPage(1); }} 
-                  />
-                )}
-                keyExtractor={(item) => item.id || 'all'}
-              />
-            </View>
-          )}
+              <ScrollView style={{maxHeight: SW * 1.2}} showsVerticalScrollIndicator={false}>
+                <View style={s.filterGroup}>
+                  <Text style={s.filterLabel}>Tipo</Text>
+                  <View style={s.filterRow}>
+                    {[{ type: null, label: 'Todos' }, ...(CONTENT_TYPES_LIST || []).map(t => ({ type: t, label: getContentTypeLabel(t) }))].map(f => (
+                      <FilterChip 
+                        key={f.type || 'all'}
+                        label={f.label} 
+                        active={type === f.type} 
+                        onPress={() => { setType(f.type); setPage(1); }} 
+                      />
+                    ))}
+                  </View>
+                </View>
 
-          {platforms.length > 0 && (
-            <View style={s.filterGroup}>
-              <Text style={s.filterLabel}>Plataformas</Text>
-              <FlatList
-                data={[{ id: null, name: 'Todas' }, ...platforms]}
-                horizontal showsHorizontalScrollIndicator={false}
-                contentContainerStyle={s.filterRow}
-                renderItem={({ item: p }) => (
-                  <FilterChip 
-                    label={p.name} 
-                    active={platformId === p.id} 
-                    onPress={() => { setPlatformId(p.id); setPage(1); }} 
-                  />
+                {genres.length > 0 && (
+                  <View style={s.filterGroup}>
+                    <Text style={s.filterLabel}>Géneros</Text>
+                    <View style={s.filterRow}>
+                      {[{ id: null, name: 'Todos' }, ...genres].map(g => (
+                        <FilterChip 
+                          key={g.id || 'all'}
+                          label={g.name} 
+                          active={genreId === g.id} 
+                          onPress={() => { setGenreId(g.id); setPage(1); }} 
+                        />
+                      ))}
+                    </View>
+                  </View>
                 )}
-                keyExtractor={(item) => item.id || 'all'}
-              />
+
+                {platforms.length > 0 && (
+                  <View style={s.filterGroup}>
+                    <Text style={s.filterLabel}>Plataformas</Text>
+                    <View style={s.filterRow}>
+                      {[{ id: null, name: 'Todas' }, ...platforms].map(p => (
+                        <FilterChip 
+                          key={p.id || 'all'}
+                          label={p.name} 
+                          active={platformId === p.id} 
+                          onPress={() => { setPlatformId(p.id); setPage(1); }} 
+                        />
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </ScrollView>
             </View>
-          )}
-        </Animated.View>
+          </Pressable>
+        </View>
       )}
 
-      {loading ? (
+      {loading && page === 1 ? (
         <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 40 }} />
       ) : (
         <FlatList
+          key={COLS}
           data={content}
           renderItem={renderItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, index) => `${item.id}-${index}`}
           numColumns={COLS}
           columnWrapperStyle={{ gap: GAP }}
           contentContainerStyle={{ paddingHorizontal: UI_SPACING.horizontal, paddingTop: 8, gap: GAP, paddingBottom: bottomPadding }}
@@ -183,6 +208,18 @@ export default function ExploreScreen() {
           windowSize={5}
           removeClippedSubviews={Platform.OS === 'android'}
           ListEmptyComponent={<View style={s.empty}><Text style={s.emptyText}>Sin resultados</Text></View>}
+          onEndReached={() => {
+            if (!loading && !isLoadingMore && hasMore) {
+              setIsLoadingMore(true);
+              setPage(p => p + 1);
+            }
+          }}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            <View style={{ height: 60, alignItems: 'center', justifyContent: 'center' }}>
+              {isLoadingMore && <ActivityIndicator size="large" color={Colors.primary} />}
+            </View>
+          }
         />
       )}
     </View>
@@ -190,25 +227,19 @@ export default function ExploreScreen() {
 }
 
 function FilterChip({ label, active, onPress }: any) {
-  const [isFocused, setIsFocused] = useState(false);
-  const scaleV = useSharedValue(1);
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scaleV.value }],
-    borderColor: isFocused ? Colors.primary : (active ? 'rgba(0,229,255,0.3)' : 'rgba(255,255,255,0.05)'),
-    backgroundColor: isFocused ? 'rgba(0,229,255,0.05)' : (active ? 'rgba(0,229,255,0.1)' : 'rgba(255,255,255,0.03)'),
-    borderWidth: isFocused ? 2 : 1,
-  }));
-
   return (
-    <Pressable
-      onFocus={() => { setIsFocused(true); scaleV.value = withSpring(1.1); }}
-      onBlur={() => { setIsFocused(false); scaleV.value = withSpring(1); }}
+    <TouchableOpacity
       onPress={onPress}
+      style={[
+        s.filterChip,
+        {
+          borderColor: active ? Colors.primary : 'rgba(255,255,255,0.1)',
+          backgroundColor: active ? 'rgba(0,229,255,0.15)' : 'rgba(255,255,255,0.05)',
+        }
+      ]}
     >
-      <Animated.View style={[s.filterChip, animatedStyle]}>
-        <Text style={[s.filterText, active && s.filterTextActive]}>{label}</Text>
-      </Animated.View>
-    </Pressable>
+      <Text style={[s.filterText, active && s.filterTextActive]}>{label}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -226,11 +257,11 @@ const s = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.08)', 
     borderRadius: 16, 
     paddingHorizontal: 16, 
-    height: scale(52, 1.2),
+    height: scale(64, 1.2),
   },
   filterToggle: { 
-    width: scale(52, 1.2), 
-    height: scale(52, 1.2), 
+    width: scale(64, 1.2), 
+    height: scale(64, 1.2), 
     borderRadius: 16, 
     backgroundColor: 'rgba(255,255,255,0.04)', 
     borderWidth: 1, 
@@ -242,19 +273,23 @@ const s = StyleSheet.create({
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
-  filtersWrapper: { backgroundColor: 'rgba(255,255,255,0.02)', paddingVertical: 16, marginBottom: 16 },
-  filterGroup: { marginBottom: 16 },
-  filterLabel: { fontSize: scale(10), fontWeight: '900', color: Colors.primarySoft, textTransform: 'uppercase', letterSpacing: 2, marginLeft: UI_SPACING.horizontal, marginBottom: 8 },
-  filterRow: { paddingHorizontal: UI_SPACING.horizontal, gap: scale(8) },
-  searchInput: { flex: 1, color: Colors.white, fontSize: scale(15), fontWeight: '600' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContent: { width: '100%', backgroundColor: '#111', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  filterHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalTitle: { color: Colors.white, fontSize: scale(18), fontWeight: 'bold' },
+  filterGroup: { marginBottom: 20 },
+  filterLabel: { fontSize: scale(11), fontWeight: '900', color: Colors.primarySoft, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 },
+  filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: scale(8) },
+  searchInput: { flex: 1, color: Colors.white, fontSize: scale(18), fontWeight: '600' },
   filterChip: { 
-    paddingHorizontal: scale(18), 
+    paddingHorizontal: scale(16), 
     paddingVertical: scale(10), 
-    borderRadius: 12, 
+    borderRadius: 10, 
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  filterText: { fontSize: scale(13), fontWeight: '700', color: Colors.textMuted },
+  filterText: { fontSize: scale(14), fontWeight: '600', color: Colors.textMuted },
   filterTextActive: { color: Colors.primary },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 60 },
   emptyText: { color: Colors.textMuted, fontSize: scale(16), fontWeight: '600' },

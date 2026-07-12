@@ -148,7 +148,7 @@ function TVButton({ children, onPress, style }: { children: React.ReactNode, onP
     );
 }
 
-const HERO_H = SCREEN_HEIGHT * 0.65;
+const HERO_H = SCREEN_HEIGHT * 0.5;
 const s = StyleSheet.create({
     container: { height: HERO_H, position: 'relative', backgroundColor: Colors.bgDark },
     slide: { width: SCREEN_WIDTH, height: HERO_H },

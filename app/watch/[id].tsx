@@ -8,7 +8,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { Colors } from '../../theme/colors';
-import { API_ROUTES, API_BASE_URL } from '../../lib/api-routes';
+import { API_ROUTES, API_BASE_URL, resolveImageUrl } from '../../lib/api-routes';
 import { fetchApi } from '../../lib/api-client';
 import { parseVTT, SubtitleCue } from '../../lib/vtt-parser';
 import { Storage as AppStorage, StorageKeys } from '../../lib/storage';
@@ -384,21 +384,25 @@ export default function WatchScreen() {
         return () => clearInterval(uiTimer);
     }, []);
 
-    // Save progress periodically
     useEffect(() => {
         progressTimer.current = setInterval(async () => {
             if (!content || durationRef.current === 0) return;
+            
+            const currentProgress = Math.floor(positionRef.current / 1000);
+            const currentDuration = Math.floor(durationRef.current / 1000);
+
             try {
                 await fetchApi(API_ROUTES.HISTORY.PROGRESS, {
                     method: 'POST',
                     body: JSON.stringify({
                         contentId: content.id,
                         episodeId: currentEpisode?.id,
-                        progress: Math.floor(positionRef.current / 1000),
-                        duration: Math.floor(durationRef.current / 1000)
+                        progress: currentProgress,
+                        duration: currentDuration
                     }),
                 });
             } catch (e) { }
+
         }, 10000);
         return () => { if (progressTimer.current) clearInterval(progressTimer.current); };
     }, [content, currentEpisode]);

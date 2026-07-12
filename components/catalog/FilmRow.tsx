@@ -17,8 +17,8 @@ import { isTV, scale, UI_SPACING } from '../../lib/responsive';
 import FilmCard from './FilmCard';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = 140;
-const CARD_WIDTH_LARGE = 155;
+const CARD_WIDTH = 112;
+const CARD_WIDTH_LARGE = 124;
 
 interface FilmItem {
   id: string;
