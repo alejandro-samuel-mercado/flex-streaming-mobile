@@ -51,7 +51,7 @@ const NobaVideoPlayer = React.memo(({
             positionMillis: currentTime * 1000,
             durationMillis: (player.duration || 0) * 1000,
             isPlaying: player.playing,
-            isBuffering: player.status === 'loading' || player.status === 'buffering',
+            isBuffering: player.status !== 'readyToPlay',
             didJustFinish: player.status === 'idle' && currentTime >= player.duration
         });
     });
@@ -62,7 +62,7 @@ const NobaVideoPlayer = React.memo(({
             positionMillis: player.currentTime * 1000,
             durationMillis: (player.duration || 0) * 1000,
             isPlaying: isPlaying,
-            isBuffering: player.status === 'loading' || player.status === 'buffering',
+            isBuffering: player.status !== 'readyToPlay',
         });
     });
 
@@ -929,7 +929,10 @@ export default function WatchScreen() {
                                 setShowResumePopup(false);
                                 setIsPlaying(true);
                                 try {
-                                    await videoRef.current?.playAsync();
+                                    if (playerRef.current) {
+                                        playerRef.current.currentTime = resumeTime || 0;
+                                        playerRef.current.play();
+                                    }
                                 } catch (e) { }
                             }}>
                                 <Text style={s.resumeBtnText}>Continuar</Text>
@@ -938,8 +941,10 @@ export default function WatchScreen() {
                                 setShowResumePopup(false);
                                 setIsPlaying(true);
                                 try {
-                                    await videoRef.current?.setPositionAsync(0);
-                                    await videoRef.current?.playAsync();
+                                    if (playerRef.current) {
+                                        playerRef.current.currentTime = 0;
+                                        playerRef.current.play();
+                                    }
                                 } catch (e) { }
                             }}>
                                 <Text style={s.startOverText}>Desde el inicio</Text>
