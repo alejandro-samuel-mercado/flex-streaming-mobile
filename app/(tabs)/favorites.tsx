@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet, ActivityIndicator, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '../../theme/colors';
 import { API_ROUTES, resolveImageUrl } from '../../lib/api-routes';
 import { Storage, StorageKeys } from '../../lib/storage';
@@ -22,23 +22,29 @@ export default function FavoritesScreen() {
 
     const [hasToken, setHasToken] = useState<boolean | null>(null);
 
-    useEffect(() => {
-        const load = async () => {
-            const token = await Storage.get(StorageKeys.ACCESS_TOKEN);
-            setHasToken(!!token);
-            if (!token) { setLoading(false); return; }
+    useFocusEffect(
+        React.useCallback(() => {
+            const load = async () => {
+                const token = await Storage.get(StorageKeys.ACCESS_TOKEN);
+                setHasToken(!!token);
+                if (!token) { setLoading(false); return; }
 
-            try {
-                const json = await fetchApi<any>(API_ROUTES.FAVORITES.BASE);
-                if (json.success && json.data) setFavs(json.data.data || []);
-            } catch (e) {
-                console.error(e);
-                setFavs([]);
-            }
-            setLoading(false);
-        };
-        load();
-    }, []);
+                try {
+                    const json = await fetchApi<any>(API_ROUTES.FAVORITES.BASE);
+                    // Handle both paginated (data.data) and direct array (data) formats
+                    if (json.success && json.data) {
+                        const items = Array.isArray(json.data) ? json.data : (json.data.data || []);
+                        setFavs(items);
+                    }
+                } catch (e) {
+                    console.error(e);
+                    setFavs([]);
+                }
+                setLoading(false);
+            };
+            load();
+        }, [])
+    );
 
     if (hasToken === false && !loading) {
         return (
