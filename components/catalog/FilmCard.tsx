@@ -120,6 +120,7 @@ export default function FilmCard({ id, title, posterUrl, rating, year, type, wid
 
 const s = StyleSheet.create({
     container: {
+        position: 'relative',
         marginBottom: 16,
     },
     card: {
@@ -158,17 +159,18 @@ const s = StyleSheet.create({
     },
     removeBtn: {
         position: 'absolute',
-        top: 8,
-        left: 8,
-        backgroundColor: 'rgba(3,6,18,0.85)',
-        width: 24,
-        height: 24,
-        borderRadius: 12,
+        top: 6,
+        left: 6,
+        backgroundColor: 'rgba(220, 38, 38, 0.95)', // Rojo más visible
+        width: 32,
+        height: 32,
+        borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.15)',
-        zIndex: 10,
+        borderColor: 'rgba(255,255,255,0.3)',
+        zIndex: 999,
+        elevation: 10,
     },
     ratingText: {
         fontSize: 10,
