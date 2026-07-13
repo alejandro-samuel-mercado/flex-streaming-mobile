@@ -79,7 +79,12 @@ export default function FilmCard({ id, title, posterUrl, rating, year, type, wid
                 {!!onRemove && (
                     <TouchableOpacity 
                         style={s.removeBtn} 
-                        onPress={() => onRemove()}
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            onRemove();
+                        }}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
                         <X size={14} color={Colors.white} />
                     </TouchableOpacity>
