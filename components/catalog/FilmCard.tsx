@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Dimensions, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Star } from 'lucide-react-native';
+import { Star, X } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { TouchableOpacity } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { Colors } from '../../theme/colors';
 import { getContentTypeLabel } from '../../lib/content-types';
@@ -24,9 +25,10 @@ interface FilmCardProps {
     width?: number;
     progress?: number;
     duration?: number;
+    onRemove?: () => void;
 }
 
-export default function FilmCard({ id, title, posterUrl, rating, year, type, width = CARD_W, progress, duration }: FilmCardProps) {
+export default function FilmCard({ id, title, posterUrl, rating, year, type, width = CARD_W, progress, duration, onRemove }: FilmCardProps) {
     const router = useRouter();
     const [isFocused, setIsFocused] = useState(false);
     const scale = useSharedValue(1);
@@ -73,6 +75,15 @@ export default function FilmCard({ id, title, posterUrl, rating, year, type, wid
                     colors={['transparent', 'rgba(3,6,18,0.8)']}
                     style={s.overlay}
                 />
+
+                {!!onRemove && (
+                    <TouchableOpacity 
+                        style={s.removeBtn} 
+                        onPress={() => onRemove()}
+                    >
+                        <X size={14} color={Colors.white} />
+                    </TouchableOpacity>
+                )}
 
                 {!!(rating && rating > 0) && (
                     <View style={s.ratingBadge}>
@@ -141,6 +152,20 @@ const s = StyleSheet.create({
         borderRadius: 6,
         borderWidth: 1,
         borderColor: 'rgba(255,197,24,0.3)',
+    },
+    removeBtn: {
+        position: 'absolute',
+        top: 8,
+        left: 8,
+        backgroundColor: 'rgba(3,6,18,0.85)',
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.15)',
+        zIndex: 10,
     },
     ratingText: {
         fontSize: 10,

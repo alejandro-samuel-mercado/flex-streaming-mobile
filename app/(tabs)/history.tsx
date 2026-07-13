@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Dimensions, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,6 +38,28 @@ export default function HistoryScreen() {
     };
     load();
   }, []);
+
+  const removeHistory = async (id: string) => {
+    Alert.alert(
+      'Eliminar del historial',
+      '¿Seguro que deseas eliminar este título de tu historial?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Eliminar', style: 'destructive', onPress: async () => {
+          try {
+            const res = await fetchApi<any>(`${API_ROUTES.HISTORY.BASE}/${id}`, {
+              method: 'DELETE'
+            });
+            if (res.success) {
+              setHistory(prev => prev.filter(f => (f.content?.id || f.id) !== id));
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        }}
+      ]
+    );
+  };
 
   const bottomPadding = insets.bottom > 0 ? insets.bottom + 90 : 110;
 
@@ -86,6 +108,7 @@ export default function HistoryScreen() {
                 posterUrl={poster}
                 progress={item.progress}
                 duration={item.duration}
+                onRemove={() => removeHistory(c?.id || item.id)}
               />
             );
           }}

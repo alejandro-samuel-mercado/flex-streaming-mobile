@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet, ActivityIndicator, Dimensions, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '../../theme/colors';
@@ -46,6 +46,29 @@ export default function FavoritesScreen() {
         }, [])
     );
 
+    const removeFavorite = async (id: string) => {
+        Alert.alert(
+            'Eliminar de favoritos',
+            '¿Seguro que deseas eliminar este título de tu lista?',
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                { text: 'Eliminar', style: 'destructive', onPress: async () => {
+                    try {
+                        const res = await fetchApi<any>(API_ROUTES.FAVORITES.TOGGLE, {
+                            method: 'POST',
+                            body: JSON.stringify({ contentId: id })
+                        });
+                        if (res.success) {
+                            setFavs(prev => prev.filter(f => f.id !== id));
+                        }
+                    } catch (e) {
+                        console.error(e);
+                    }
+                }}
+            ]
+        );
+    };
+
     if (hasToken === false && !loading) {
         return (
             <View style={s.screen}>
@@ -79,6 +102,7 @@ export default function FavoritesScreen() {
                                 rating={item.rating}
                                 year={item.releaseYear}
                                 type={item.type}
+                                onRemove={() => removeFavorite(item.id)}
                             />
                         );
                     }}
