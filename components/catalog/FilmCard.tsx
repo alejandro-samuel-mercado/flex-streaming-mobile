@@ -57,66 +57,64 @@ export default function FilmCard({ id, title, posterUrl, rating, year, type, wid
     };
 
     return (
-        <Pressable
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            onPress={() => router.push(`/film/${id}` as any)}
-            style={[s.container, { width }]}
-        >
-            <Animated.View style={[s.card, s.imageWrap, { width, height: width * 1.5 }, animatedStyle]}>
-                <Image
-                    source={resolveImageUrl(posterUrl)}
-                    contentFit="cover"
-                    transition={300}
-                    style={s.image}
-                />
+        <View style={[s.container, { width }]}>
+            <Pressable
+                onFocus={handleFocus}
+                onBlur={handleBlur}
+                onPress={() => router.push(`/film/${id}` as any)}
+                style={s.card}
+            >
+                <Animated.View style={[s.imageWrap, { width, height: width * 1.5 }, animatedStyle]}>
+                    <Image
+                        source={resolveImageUrl(posterUrl)}
+                        contentFit="cover"
+                        transition={300}
+                        style={s.image}
+                    />
 
-                <LinearGradient
-                    colors={['transparent', 'rgba(3,6,18,0.8)']}
-                    style={s.overlay}
-                />
+                    <LinearGradient
+                        colors={['transparent', 'rgba(3,6,18,0.8)']}
+                        style={s.overlay}
+                    />
 
-                {!!onRemove && (
-                    <TouchableOpacity 
-                        style={s.removeBtn} 
-                        onPress={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            onRemove();
-                        }}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                        <X size={14} color={Colors.white} />
-                    </TouchableOpacity>
-                )}
-
-                {!!(rating && rating > 0) && (
-                    <View style={s.ratingBadge}>
-                        <Star size={8} fill={Colors.rating} color={Colors.rating} />
-                        <Text style={s.ratingText}>{rating.toFixed(1)}</Text>
-                    </View>
-                )}
-
-                {!!(progress !== undefined && duration) && (
-                    <View style={s.progressBar}>
-                        <View style={[s.progressFill, { width: `${(progress / Math.max(duration, 1)) * 100}%` }]} />
-                    </View>
-                )}
-            </Animated.View>
-
-            <View style={s.info}>
-                <Text style={s.title} numberOfLines={1}>{title}</Text>
-                <View style={s.meta}>
-                    {!!year && <Text style={s.metaText}>{year}</Text>}
-                    {!!type && (
-                        <View style={s.typeDotWrap}>
-                            <View style={s.dot} />
-                            <Text style={s.metaText}>{getContentTypeLabel(type)}</Text>
+                    {!!(rating && rating > 0) && (
+                        <View style={s.ratingBadge}>
+                            <Star size={8} fill={Colors.rating} color={Colors.rating} />
+                            <Text style={s.ratingText}>{rating.toFixed(1)}</Text>
                         </View>
                     )}
+
+                    {!!(progress !== undefined && duration) && (
+                        <View style={s.progressBar}>
+                            <View style={[s.progressFill, { width: `${(progress / Math.max(duration, 1)) * 100}%` }]} />
+                        </View>
+                    )}
+                </Animated.View>
+
+                <View style={s.info}>
+                    <Text style={s.title} numberOfLines={1}>{title}</Text>
+                    <View style={s.meta}>
+                        {!!year && <Text style={s.metaText}>{year}</Text>}
+                        {!!type && (
+                            <View style={s.typeDotWrap}>
+                                <View style={s.dot} />
+                                <Text style={s.metaText}>{getContentTypeLabel(type)}</Text>
+                            </View>
+                        )}
+                    </View>
                 </View>
-            </View>
-        </Pressable>
+            </Pressable>
+
+            {!!onRemove && (
+                <TouchableOpacity 
+                    style={s.removeBtn} 
+                    onPress={onRemove}
+                    hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                >
+                    <X size={14} color={Colors.white} />
+                </TouchableOpacity>
+            )}
+        </View>
     );
 }
 
