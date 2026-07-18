@@ -21,6 +21,12 @@ import * as NavigationBar from 'expo-navigation-bar';
 import { BlurView } from 'expo-blur';
 
 
+// Sanitize duration: HLS can give NaN or Infinity before the stream is fully loaded
+const safeDuration = (raw: number | undefined | null): number => {
+    if (!raw || !isFinite(raw) || isNaN(raw)) return 0;
+    return raw;
+};
+
 // Isolated Video component to prevent any UI-induced re-renders
 const NobaVideoPlayer = React.memo(({
     streamSrc,
@@ -38,6 +44,25 @@ const NobaVideoPlayer = React.memo(({
         if (playerRef) playerRef.current = player;
     }, [player, playerRef]);
 
+    // ─── Reliable fallback polling ───────────────────────────────────────────
+    // `timeUpdate` from expo-video is NOT reliable on Android HLS streams.
+    // This interval is the guaranteed source of truth for position and duration.
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const pos = safeDuration(player.currentTime);
+            const dur = safeDuration(player.duration);
+            onStatus({
+                isLoaded: true,
+                positionMillis: pos * 1000,
+                durationMillis: dur * 1000,
+                isPlaying: player.playing,
+                isBuffering: player.status !== 'readyToPlay',
+                didJustFinish: player.status === 'idle' && dur > 0 && pos >= dur,
+            });
+        }, 500);
+        return () => clearInterval(interval);
+    }, [player]); // player is a stable reference from useVideoPlayer
+
     useEventListener(player, 'statusChange', ({ status, error }) => {
         if (status === 'error') {
             setError('Error al cargar el video. Verifica tu conexión.');
@@ -49,7 +74,7 @@ const NobaVideoPlayer = React.memo(({
         onStatus({
             isLoaded: true,
             positionMillis: currentTime * 1000,
-            durationMillis: (player.duration || 0) * 1000,
+            durationMillis: safeDuration(player.duration) * 1000,
             isPlaying: player.playing,
             isBuffering: player.status !== 'readyToPlay',
             didJustFinish: player.status === 'idle' && currentTime >= player.duration
@@ -59,8 +84,8 @@ const NobaVideoPlayer = React.memo(({
     useEventListener(player, 'playingChange', ({ isPlaying }) => {
         onStatus({
             isLoaded: true,
-            positionMillis: player.currentTime * 1000,
-            durationMillis: (player.duration || 0) * 1000,
+            positionMillis: safeDuration(player.currentTime) * 1000,
+            durationMillis: safeDuration(player.duration) * 1000,
             isPlaying: isPlaying,
             isBuffering: player.status !== 'readyToPlay',
         });
@@ -216,8 +241,11 @@ export default function WatchScreen() {
     const combinedGesture = Gesture.Exclusive(gesture, tap);
 
     const animatedProgressStyle = useAnimatedStyle(() => {
-        const p = isSeeking.value ? seekProgress.value : (durationSV.value > 0 ? (positionSV.value / durationSV.value) * 100 : 0);
-        return { width: `${p}%` };
+        // Use absolute pixels — string percentages ('X%') are unreliable in Reanimated 3 on Android
+        const pct = isSeeking.value
+            ? seekProgress.value / 100
+            : (durationSV.value > 0 ? positionSV.value / durationSV.value : 0);
+        return { width: Math.max(0, pct * barWidth) };
     });
 
 
@@ -389,17 +417,15 @@ export default function WatchScreen() {
         load();
     }, [id, episodeId]);
 
-    // Sync shared values to refs for the progress save interval
-    useEffect(() => {
-        positionRef.current = displayTime.pos;
-        durationRef.current = displayTime.dur;
-    }, [displayTime]);
-
     // Slow UI update for time text (every 1s)
+    // positionRef.current is the single source of truth — written by onStatus, never by displayTime.
     useEffect(() => {
         const uiTimer = setInterval(() => {
-            setDisplayTime({ pos: positionRef.current, dur: durationRef.current });
-        }, 1000);
+            setDisplayTime({
+                pos: positionRef.current,
+                dur: durationRef.current,
+            });
+        }, 500);
         return () => clearInterval(uiTimer);
     }, []);
 
@@ -999,7 +1025,7 @@ const s = StyleSheet.create({
     skipText: { color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '700', textAlign: 'center', marginTop: 4 },
     bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 100, backgroundColor: 'rgba(0,0,0,0.5)' },
     progressWrap: { height: 40, justifyContent: 'center', marginBottom: 4 },
-    progressBg: { height: 6, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 3, overflow: 'visible' },
+    progressBg: { height: 6, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 3, overflow: 'visible', alignSelf: 'stretch' },
     progressFill: { height: '100%', backgroundColor: Colors.primary, borderRadius: 3, position: 'relative', overflow: 'visible' },
     progressThumb: { width: 16, height: 16, borderRadius: 8, backgroundColor: Colors.primary, position: 'absolute', right: -8, top: -5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.5, shadowRadius: 4, elevation: 5 },
     bottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
