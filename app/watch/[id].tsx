@@ -32,11 +32,48 @@ const NobaVideoPlayer = React.memo(({
 }: any) => {
     const player = useVideoPlayer(streamSrc, player => {
         player.play();
+        // Buffer agresivo: fuerza al player a pre-cargar 90 segundos hacia adelante.
+        // En dispositivos de gama baja o con redes móviles inestables, un buffer mayor
+        // evita que el video se pause mientras descarga los siguientes segmentos.
+        // HLS segments = 6s; 90s = 15 segmentos en buffer = muy tolerante a cortes de red.
+        player.bufferOptions = {
+            preferredForwardBufferDuration: 90,   // iOS + Android: buffer 90s por adelantado
+            waitsToMinimizeStalling: true,         // iOS: espera buffer saludable antes de arrancar
+        };
     });
 
     useEffect(() => {
         if (playerRef) playerRef.current = player;
     }, [player, playerRef]);
+
+    // Auto-recover from stall en Android de gama baja:
+    // ExoPlayer puede quedar en un estado donde player.playing=true pero currentTime no avanza.
+    // Esto pasa cuando el sistema operativo reclama RAM y el buffer se vacía sin notificar al player.
+    const lastPositionMs = useRef(0);
+    const stallTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+    const stallCount = useRef(0);
+
+    useEffect(() => {
+        stallTimer.current = setInterval(() => {
+            if (!player) return;
+            const now = player.currentTime * 1000;
+            const isStuck = Math.abs(now - lastPositionMs.current) < 150;
+            const shouldBePlayingButIsnt = player.playing && isStuck;
+
+            if (shouldBePlayingButIsnt) {
+                stallCount.current += 1;
+                // After 2 consecutive stall detections (2s), force a play() call
+                if (stallCount.current >= 2) {
+                    stallCount.current = 0;
+                    try { player.play(); } catch (_) {}
+                }
+            } else {
+                stallCount.current = 0;
+            }
+            lastPositionMs.current = now;
+        }, 1000);
+        return () => { if (stallTimer.current) clearInterval(stallTimer.current); };
+    }, [player]);
 
     useEventListener(player, 'statusChange', ({ status, error }) => {
         if (status === 'error') {
