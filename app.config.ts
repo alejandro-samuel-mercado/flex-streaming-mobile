@@ -52,6 +52,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         ['expo-screen-orientation', { initialOrientation: 'DEFAULT' }],
         'expo-video',
         'expo-audio',
+        'expo-asset',
     ],
     experiments: { typedRoutes: true },
     extra: {

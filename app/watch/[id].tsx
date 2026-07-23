@@ -1,24 +1,24 @@
-import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, useWindowDimensions, ScrollView, Pressable, Platform, FlatList } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEventListener } from 'expo';
-import { ArrowLeft, Play, Pause, SkipBack, SkipForward, List, X, AlertCircle, Volume2, VolumeX, MessageSquare, Settings, Languages, RotateCcw, RotateCw, Maximize, Minimize, Smartphone, Check, Lock, Unlock, Clock } from 'lucide-react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import * as ScreenOrientation from 'expo-screen-orientation';
-import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import { Colors } from '../../theme/colors';
-import { API_ROUTES, API_BASE_URL, resolveImageUrl } from '../../lib/api-routes';
-import { fetchApi } from '../../lib/api-client';
-import { parseVTT, SubtitleCue } from '../../lib/vtt-parser';
-import { Storage as AppStorage, StorageKeys } from '../../lib/storage';
-import { isTV, scale } from '../../lib/responsive';
-import { useAuth } from '../../context/AuthContext';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
-import * as NavigationBar from 'expo-navigation-bar';
 import { BlurView } from 'expo-blur';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import * as NavigationBar from 'expo-navigation-bar';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as ScreenOrientation from 'expo-screen-orientation';
+import { StatusBar } from 'expo-status-bar';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import { AlertCircle, ArrowLeft, Check, Clock, Languages, List, Lock, Maximize, MessageSquare, Minimize, Pause, Play, RotateCcw, RotateCw, Settings, SkipBack, SkipForward, Smartphone, Unlock, Volume2, VolumeX, X } from 'lucide-react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, FlatList, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../../context/AuthContext';
+import { fetchApi } from '../../lib/api-client';
+import { API_BASE_URL, API_ROUTES } from '../../lib/api-routes';
+import { scale } from '../../lib/responsive';
+import { Storage as AppStorage, StorageKeys } from '../../lib/storage';
+import { parseVTT, SubtitleCue } from '../../lib/vtt-parser';
+import { Colors } from '../../theme/colors';
 
 
 // Isolated Video component to prevent any UI-induced re-renders
@@ -46,34 +46,7 @@ const NobaVideoPlayer = React.memo(({
         if (playerRef) playerRef.current = player;
     }, [player, playerRef]);
 
-    // Auto-recover from stall en Android de gama baja:
-    // ExoPlayer puede quedar en un estado donde player.playing=true pero currentTime no avanza.
-    // Esto pasa cuando el sistema operativo reclama RAM y el buffer se vacía sin notificar al player.
-    const lastPositionMs = useRef(0);
-    const stallTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-    const stallCount = useRef(0);
 
-    useEffect(() => {
-        stallTimer.current = setInterval(() => {
-            if (!player) return;
-            const now = player.currentTime * 1000;
-            const isStuck = Math.abs(now - lastPositionMs.current) < 150;
-            const shouldBePlayingButIsnt = player.playing && isStuck;
-
-            if (shouldBePlayingButIsnt) {
-                stallCount.current += 1;
-                // After 2 consecutive stall detections (2s), force a play() call
-                if (stallCount.current >= 2) {
-                    stallCount.current = 0;
-                    try { player.play(); } catch (_) {}
-                }
-            } else {
-                stallCount.current = 0;
-            }
-            lastPositionMs.current = now;
-        }, 1000);
-        return () => { if (stallTimer.current) clearInterval(stallTimer.current); };
-    }, [player]);
 
     useEventListener(player, 'statusChange', ({ status, error }) => {
         if (status === 'error') {
@@ -92,7 +65,25 @@ const NobaVideoPlayer = React.memo(({
             didJustFinish: player.status === 'idle' && currentTime >= player.duration
         });
     });
-    
+    // Fallback polling: En dispositivos Android con HLS, el evento nativo `timeUpdate`
+    // a veces deja de dispararse luego de un buffer stall.
+    // Usamos un pequeño intervalo manual para garantizar que la UI avance siempre.
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (player && player.playing) {
+                onStatus({
+                    isLoaded: true,
+                    positionMillis: player.currentTime * 1000,
+                    durationMillis: (player.duration || 0) * 1000,
+                    isPlaying: player.playing,
+                    isBuffering: player.status !== 'readyToPlay',
+                    didJustFinish: player.status === 'idle' && player.duration > 0 && player.currentTime >= player.duration
+                });
+            }
+        }, 500);
+        return () => clearInterval(interval);
+    }, [player, onStatus]);
+
     useEventListener(player, 'playingChange', ({ isPlaying }) => {
         onStatus({
             isLoaded: true,
@@ -103,6 +94,17 @@ const NobaVideoPlayer = React.memo(({
         });
     });
 
+    if (Platform.OS === 'web') {
+        return (
+            <View style={[s.video, { backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }]}>
+                <Text style={{ color: '#fff', textAlign: 'center', padding: 40, fontSize: 16 }}>
+                    El reproductor de video HLS no está soportado en la vista web.
+                    Por favor, prueba la reproducción desde un celular o emulador Android.
+                </Text>
+            </View>
+        );
+    }
+
     return (
         <VideoView
             key="noba-video-player"
@@ -112,7 +114,7 @@ const NobaVideoPlayer = React.memo(({
             nativeControls={false}
         />
     );
-}, (prev, next) => prev.resizeMode === next.resizeMode && prev.streamSrc === next.streamSrc);
+}, (prev:any, next:any) => prev.resizeMode === next.resizeMode && prev.streamSrc === next.streamSrc);
 
 export default function WatchScreen() {
     const { width: SW, height: SH } = useWindowDimensions();
@@ -426,11 +428,7 @@ export default function WatchScreen() {
         load();
     }, [id, episodeId]);
 
-    // Sync shared values to refs for the progress save interval
-    useEffect(() => {
-        positionRef.current = displayTime.pos;
-        durationRef.current = displayTime.dur;
-    }, [displayTime]);
+
 
     // Slow UI update for time text (every 1s)
     useEffect(() => {
@@ -658,37 +656,39 @@ export default function WatchScreen() {
             )}
 
             {/* Video Layer - Isolated in a bunker */}
-            <NobaVideoPlayer
-                streamSrc={streamSrc}
-                playerRef={playerRef}
-                resizeMode={resizeMode}
-                onStatus={onStatus}
-                setError={setError}
-                onPlayerError={async (type: string) => {
-                    if (type !== 'network_blip') return;
-                    if (retryCount.current >= 3) {
-                        setError('Error de reproducción. Verifica tu conexión a internet.');
-                        return;
-                    }
-                    retryCount.current += 1;
-                    const url = streamUrlRef.current;
-                    const savedPos = lastPositionRef.current;
-                    if (!url || !playerRef.current) return;
-                    try {
-                        setIsBuffering(true);
-                        playerRef.current.replace(url);
-                        await new Promise(r => setTimeout(r, 1500));
-                        playerRef.current.play();
-                        if (savedPos > 2000) {
-                            playerRef.current.currentTime = savedPos / 1000;
+            {streamSrc ? (
+                <NobaVideoPlayer
+                    streamSrc={streamSrc}
+                    playerRef={playerRef}
+                    resizeMode={resizeMode}
+                    onStatus={onStatus}
+                    setError={setError}
+                    onPlayerError={async (type: string) => {
+                        if (type !== 'network_blip') return;
+                        if (retryCount.current >= 3) {
+                            setError('Error de reproducción. Verifica tu conexión a internet.');
+                            return;
                         }
-                    } catch (e) {
-                        setError('Error al reconectar el stream.');
-                    } finally {
-                        setIsBuffering(false);
-                    }
-                }}
-            />
+                        retryCount.current += 1;
+                        const url = streamUrlRef.current;
+                        const savedPos = lastPositionRef.current;
+                        if (!url || !playerRef.current) return;
+                        try {
+                            setIsBuffering(true);
+                            playerRef.current.replace(url);
+                            await new Promise(r => setTimeout(r, 1500));
+                            playerRef.current.play();
+                            if (savedPos > 2000) {
+                                playerRef.current.currentTime = savedPos / 1000;
+                            }
+                        } catch (e) {
+                            setError('Error al reconectar el stream.');
+                        } finally {
+                            setIsBuffering(false);
+                        }
+                    }}
+                />
+            ) : null}
 
             {/* Custom VTT Subtitles Overlay */}
             {currentSubtitleText ? (
