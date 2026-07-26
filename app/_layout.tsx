@@ -1,5 +1,5 @@
 'use client';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter, useSegments, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { Colors } from '../theme/colors';
@@ -13,19 +13,20 @@ import { UpdateModal } from '../components/ui/UpdateModal';
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const segments = useSegments();
+  const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
     if (loading) return;
 
-    const inAuthGroup = segments[0] === '(auth)';
+    const inAuthGroup = segments[0] === '(auth)' || segments.includes('login') || pathname?.includes('login');
 
     if (!user && !inAuthGroup) {
       router.replace('/(auth)/login' as any);
     } else if (user && inAuthGroup) {
       router.replace('/(tabs)' as any);
     }
-  }, [user, loading, segments]);
+  }, [user, loading, segments, pathname]);
 
   if (loading) {
     return (
@@ -35,7 +36,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const inAuthGroup = segments[0] === '(auth)';
+  const inAuthGroup = segments[0] === '(auth)' || segments.includes('login') || pathname?.includes('login');
   if (!user && !inAuthGroup) {
     return <View style={{ flex: 1, backgroundColor: Colors.bg }} />;
   }

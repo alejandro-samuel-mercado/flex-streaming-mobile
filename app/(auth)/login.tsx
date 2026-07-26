@@ -84,7 +84,7 @@ export default function LoginScreen() {
 
               <TVInput 
                 icon={<User size={20} color="#D946EF" />}
-                placeholder="Identificador de Usuario" 
+                placeholder="Usuario" 
                 value={username} 
                 onChangeText={setUsername} 
                 autoCapitalize="none" 
@@ -92,7 +92,7 @@ export default function LoginScreen() {
 
               <TVInput 
                 icon={<Lock size={20} color="#00FF9D" />}
-                placeholder="Clave de Seguridad" 
+                placeholder="Contraseña" 
                 value={password} 
                 onChangeText={setPassword} 
                 secureTextEntry={!showPw}
@@ -116,10 +116,16 @@ export default function LoginScreen() {
 
 function TVInput({ icon, rightSlot, onFocus, onBlur, ...props }: any) {
   const [isFocused, setIsFocused] = useState(false);
+  const inputRef = React.useRef<TextInput>(null);
   return (
-    <View style={[s.inputWrap, isFocused && s.inputFocused]}>
+    <Pressable 
+      onPress={() => inputRef.current?.focus()} 
+      style={[s.inputWrap, isFocused && s.inputFocused]}
+      accessible={false}
+    >
       {icon}
       <TextInput 
+        ref={inputRef}
         {...props} 
         style={s.input} 
         placeholderTextColor="rgba(255, 255, 255, 0.45)"
@@ -133,7 +139,7 @@ function TVInput({ icon, rightSlot, onFocus, onBlur, ...props }: any) {
         }}
       />
       {rightSlot}
-    </View>
+    </Pressable>
   );
 }
 
