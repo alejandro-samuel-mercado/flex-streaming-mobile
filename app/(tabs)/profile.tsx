@@ -36,7 +36,7 @@ export default function ProfileScreen() {
                                 <User size={48} color="#D946EF" />
                             </View>
                             <Text style={s.noAuthTitle}>IDENTIFICACIÓN REQUERIDA</Text>
-                            <Text style={s.noAuthSub}>Conéctate a la red Nuba Quantum para gestionar tu membresía y marcadores del sistema.</Text>
+                            <Text style={s.noAuthSub}>Conéctate con los administradores de Nuba para gestionar tu membresía.</Text>
                             <TouchableOpacity style={s.loginBtn} onPress={() => router.push('/(auth)/login' as any)}>
                                 <Text style={s.loginBtnText}>CONECTAR AHORA</Text>
                             </TouchableOpacity>

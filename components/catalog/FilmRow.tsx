@@ -86,6 +86,15 @@ export default function FilmRow({ title, subtitle, items, variant = 'default', a
         contentContainerStyle={styles.listContent}
         snapToInterval={cardW + 12}
         decelerationRate="fast"
+        initialNumToRender={5}
+        maxToRenderPerBatch={5}
+        windowSize={3}
+        removeClippedSubviews={true}
+        getItemLayout={(data, index) => ({
+          length: cardW + 12,
+          offset: (cardW + 12) * index,
+          index,
+        })}
       />
     </View>
   );

@@ -153,6 +153,7 @@ export default function WatchScreen() {
     
     // Subtitles Engine State
     const [selectedSubtitle, setSelectedSubtitle] = useState<any>(null);
+    const [selectedAudioTrack, setSelectedAudioTrack] = useState<any>(null);
     const [subtitleCues, setSubtitleCues] = useState<SubtitleCue[]>([]);
     const subtitleCuesRef = useRef<SubtitleCue[]>([]);
     const [currentSubtitleText, setCurrentSubtitleText] = useState<string>('');
@@ -915,17 +916,27 @@ export default function WatchScreen() {
 
                                 {activeMenu === 'audio' && (
                                     <>
-                                        {(playerRef.current?.availableAudioTracks || []).map((aud: any, i: number) => (
-                                            <TouchableOpacity key={i} style={s.menuItem} onPress={() => {
-                                                if (playerRef.current) {
-                                                    playerRef.current.audioTrack = aud;
-                                                }
-                                                setActiveMenu(null);
-                                            }}>
-                                                <Text style={s.menuItemText}>{aud.language || aud.name || `Pista ${i + 1}`}</Text>
-                                                {playerRef.current?.audioTrack?.name === aud.name && <Check size={16} color={Colors.primary} />}
-                                            </TouchableOpacity>
-                                        ))}
+                                        {(playerRef.current?.availableAudioTracks || []).map((aud: any, i: number) => {
+                                            const currentTrack = selectedAudioTrack || playerRef.current?.audioTrack;
+                                            const isActive = currentTrack 
+                                                ? (currentTrack === aud || 
+                                                   (currentTrack.index !== undefined && aud.index !== undefined && currentTrack.index === aud.index) ||
+                                                   (currentTrack.id !== undefined && aud.id !== undefined && currentTrack.id === aud.id) ||
+                                                   ((currentTrack.label || currentTrack.language || currentTrack.name) && (currentTrack.label || currentTrack.language || currentTrack.name) === (aud.label || aud.language || aud.name)))
+                                                : i === 0;
+                                            return (
+                                                <TouchableOpacity key={i} style={[s.menuItem, isActive && s.menuItemActive]} onPress={() => {
+                                                    if (playerRef.current) {
+                                                        playerRef.current.audioTrack = aud;
+                                                    }
+                                                    setSelectedAudioTrack(aud);
+                                                    setActiveMenu(null);
+                                                }}>
+                                                    <Text style={s.menuItemText}>{aud.label || aud.language || aud.name || `Pista ${i + 1}`}</Text>
+                                                    {isActive && <Check size={16} color={Colors.primary} />}
+                                                </TouchableOpacity>
+                                            );
+                                        })}
                                         {(!playerRef.current?.availableAudioTracks || playerRef.current.availableAudioTracks.length === 0) && (
                                             <View style={s.menuItem}>
                                                 <Text style={s.menuItemText}>No hay pistas de audio disponibles.</Text>

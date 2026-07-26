@@ -92,7 +92,7 @@ export const API_ROUTES = {
  * Resolve a media URL (thumbnails, posters, etc.) to a full URL.
  */
 export const resolveImageUrl = (url: string | null | undefined): string => {
-  if (!url) return 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?q=80&w=2574&auto=format&fit=crop';
+  if (!url) return 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?q=60&w=400&auto=format&fit=crop';
   if (url.startsWith('http')) return url;
 
   const normalizedUrl = url.startsWith('/') ? url : `/${url}`;

@@ -48,11 +48,13 @@ export default function LoginScreen() {
         <LinearGradient colors={['transparent', 'rgba(217, 70, 239, 0.15)', 'rgba(0, 255, 157, 0.1)', 'transparent']} start={{x:0, y:0}} end={{x:1, y:1}} style={StyleSheet.absoluteFillObject} />
       </View>
 
-      <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
-        <View style={s.backPod}>
-          <ArrowLeft size={22} color="#FFFFFF" />
-        </View>
-      </TouchableOpacity>
+      {!!user && (
+        <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
+          <View style={s.backPod}>
+            <ArrowLeft size={22} color="#FFFFFF" />
+          </View>
+        </TouchableOpacity>
+      )}
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.center}>
         <Animated.View entering={FadeInDown.duration(600)} style={s.cardWrap}>

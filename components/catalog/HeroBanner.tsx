@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     View,
     Text,
@@ -51,12 +51,21 @@ export default function HeroBanner({ slides }: { slides: HeroSlide[] }) {
 
     if (slides.length === 0) return null;
 
-    const renderSlide = ({ item }: { item: HeroSlide }) => {
+    const renderSlide = useCallback(({ item }: { item: HeroSlide }) => {
         // Use posterUrl (portada) or backdropUrl
         const bgSource = item.posterUrl || item.backdropUrl || null;
+        const resolvedUrl = typeof bgSource === 'string' ? bgSource : ((bgSource as any)?.uri || null);
         return (
             <View style={s.slide}>
-                <Image source={bgSource} style={s.bgImage} contentFit="cover" transition={500} />
+                <Image 
+                    source={resolvedUrl ? { uri: resolvedUrl } : null} 
+                    style={s.bgImage} 
+                    contentFit="cover" 
+                    transition={150} 
+                    cachePolicy="memory-disk"
+                    priority="high"
+                    recyclingKey={item.id}
+                />
 
                 {/* Extremely light bottom gradient only, so the portada is 100% visible and bright! */}
                 <LinearGradient 
@@ -73,14 +82,14 @@ export default function HeroBanner({ slides }: { slides: HeroSlide[] }) {
                             onPress={() => router.push(`/film/${item.id}` as any)}
                             glow={item.hasVideo !== false}
                         >
-                            <Play size={18} fill={item.hasVideo === false ? 'rgba(255,255,255,0.4)' : 'rgba(0, 255, 157, 0.9)'} color={item.hasVideo === false ? 'rgba(255,255,255,0.4)' : 'rgba(0, 255, 157, 0.9)'} />
-                            {item.hasVideo === false && (
-                                <Text style={s.playBtnText}>Próximamente</Text>
-                            )}
+                            <Play size={20} fill={item.hasVideo === false ? 'rgba(255,255,255,0.4)' : '#050214'} color={item.hasVideo === false ? 'rgba(255,255,255,0.4)' : '#050214'} />
+                            <Text style={[s.playBtnText, item.hasVideo !== false && { color: '#050214', fontWeight: '900' }]}>
+                                {item.hasVideo === false ? 'Próximamente' : 'Play'}
+                            </Text>
                         </CyberButton>
                         
                         <CyberButton style={s.plusBtn} onPress={() => router.push(`/film/${item.id}` as any)}>
-                            <Plus size={18} color="#FFFFFF" />
+                            <Plus size={22} color="#FFFFFF" />
                         </CyberButton>
                     </View>
 
@@ -99,15 +108,12 @@ export default function HeroBanner({ slides }: { slides: HeroSlide[] }) {
                             </View>
                         )}
                         {!!item.year && <Text style={s.metaText}>{item.year}</Text>}
-                        {item.genres?.slice(0, 1).map((g: any, i: number) => {
-                            const label = typeof g === 'string' ? g : (g?.name || g?.genre?.name || g?.genre?.title || g?.title || 'Género');
-                            return <View key={i} style={s.genreBadge}><Text style={s.genreBadgeText}>{label}</Text></View>;
-                        })}
+                       
                     </View>
                 </View>
             </View>
         );
-    };
+    }, [router]);
 
     return (
         <View style={s.container}>
@@ -120,6 +126,11 @@ export default function HeroBanner({ slides }: { slides: HeroSlide[] }) {
                 showsHorizontalScrollIndicator={false}
                 onViewableItemsChanged={onViewableItemsChanged}
                 viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
+                initialNumToRender={1}
+                maxToRenderPerBatch={1}
+                windowSize={2}
+                removeClippedSubviews={true}
+                getItemLayout={(data, index) => ({ length: SCREEN_WIDTH, offset: SCREEN_WIDTH * index, index })}
             />
 
             <View style={s.dots}>
@@ -151,7 +162,7 @@ function CyberButton({ children, onPress, style, glow = false }: { children: Rea
 const HERO_H = SCREEN_HEIGHT * 0.85;
 
 const s = StyleSheet.create({
-    container: { height: HERO_H, position: 'relative', backgroundColor: '#050214' },
+    container: { height: HERO_H, position: 'relative', backgroundColor: '#050214', marginBottom: scale(28) },
     slide: { width: SCREEN_WIDTH, height: HERO_H },
     bgImage: { ...StyleSheet.absoluteFillObject },
     gradient: { ...StyleSheet.absoluteFillObject },
@@ -181,37 +192,35 @@ const s = StyleSheet.create({
     ratingBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(250, 204, 21, 0.04)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, borderWidth: 0.8, borderColor: 'rgba(250, 204, 21, 0.25)' },
     ratingText: { fontSize: 11, fontWeight: '800', color: 'rgba(250, 204, 21, 0.75)' },
     metaText: { fontSize: 11, fontWeight: '700', color: 'rgba(255, 255, 255, 0.55)' },
-    actions: { flexDirection: 'row', gap: 20, alignItems: 'center', flexWrap: 'wrap' },
+    actions: { flexDirection: 'row', gap: 14, alignItems: 'center', flexWrap: 'wrap' },
     playBtn: { 
         flexDirection: 'row', 
         alignItems: 'center', 
         justifyContent: 'center',
-        gap: 6, 
-        width: 40,
-        height: 40,
-        backgroundColor: 'rgba(0, 255, 157, 0.04)', 
-        borderWidth: 0.8, 
-        borderColor: 'rgba(0, 255, 157, 0.3)', 
-        borderRadius: 14 
+        gap: 8, 
+        paddingHorizontal: 22,
+        height: 48,
+        backgroundColor: '#00FF9D', 
+        borderRadius: 16,
     },
-    glowBtn: { shadowColor: '#00FF9D', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 10, elevation: 6 },
-    playBtnDisabled: { width: 'auto', paddingHorizontal: 14, backgroundColor: 'rgba(255, 255, 255, 0.05)', shadowOpacity: 0 },
+    glowBtn: { shadowColor: '#00FF9D', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.6, shadowRadius: 12, elevation: 8 },
+    playBtnDisabled: { paddingHorizontal: 16, backgroundColor: 'rgba(255, 255, 255, 0.08)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.2)', shadowOpacity: 0 },
     playBtnText: { 
-        fontSize: 10.5, 
-        fontWeight: '800', 
-        color: 'rgba(255, 255, 255, 0.6)', 
+        fontSize: scale(13), 
+        fontWeight: '900', 
+        color: '#050214', 
         textTransform: 'uppercase', 
         letterSpacing: 1,
     },
     plusBtn: { 
-        width: 40, 
-        height: 40, 
-        borderRadius: 14, 
-        backgroundColor: 'rgba(217, 70, 239, 0.04)', 
+        width: 48, 
+        height: 48, 
+        borderRadius: 16, 
+        backgroundColor: 'rgba(217, 70, 239, 0.12)', 
         justifyContent: 'center', 
         alignItems: 'center', 
-        borderWidth: 0.8, 
-        borderColor: 'rgba(217, 70, 239, 0.3)' 
+        borderWidth: 1.2, 
+        borderColor: 'rgba(217, 70, 239, 0.45)' 
     },
     dots: { position: 'absolute', bottom: 10, right: 16, flexDirection: 'row', gap: 5 },
     dot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: 'rgba(255, 255, 255, 0.3)' },

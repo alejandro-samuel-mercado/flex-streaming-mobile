@@ -147,7 +147,7 @@ export default function MyNubaScreen() {
 }
 
 const s = StyleSheet.create({
-    screen: { flex: 1, backgroundColor: 'transparent' },
+    screen: { flex: 1, backgroundColor: 'transparent', marginTop: 30 },
     content: { paddingBottom: 20 },
     loader: { flex: 1 },
     header: {

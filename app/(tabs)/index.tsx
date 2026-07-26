@@ -1,6 +1,7 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Dimensions, Image, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FAQSection from '../../components/catalog/FAQSection';
 import FilmRow from '../../components/catalog/FilmRow';
@@ -85,6 +86,20 @@ export default function HomeScreen() {
             const json = await fetchApi<any>(API_ROUTES.HOMEPAGE.DATA);
             if (json.success && json.data) {
                 setData(json.data);
+                const urlsToPrefetch: string[] = [];
+                (json.data.featured || []).forEach((c: any) => {
+                    const poster = resolveImageUrl(c.thumbnails?.find((t: any) => t.type === 'POSTER')?.url);
+                    const backdrop = resolveImageUrl(c.thumbnails?.find((t: any) => t.type === 'BACKDROP')?.url);
+                    if (poster) urlsToPrefetch.push(poster);
+                    if (backdrop) urlsToPrefetch.push(backdrop);
+                });
+                (json.data.trending || []).slice(0, 10).forEach((c: any) => {
+                    const poster = resolveImageUrl(c.thumbnails?.find((t: any) => t.type === 'POSTER')?.url);
+                    if (poster) urlsToPrefetch.push(poster);
+                });
+                if (urlsToPrefetch.length > 0) {
+                    ExpoImage.prefetch(urlsToPrefetch, 'memory-disk');
+                }
             }
         } catch (e) {
             console.error('Homepage fetch error:', e);
@@ -166,7 +181,9 @@ export default function HomeScreen() {
                 {heroSlides.length > 0 && <HeroBanner slides={heroSlides} />}
 
                 {continueWatching.length > 0 && (
-                    <FilmRow title="Continuar viendo" subtitle="Retoma tu sesión cuántica" items={continueWatching} variant="large" accentColor="#00FF9D" />
+                    <View style={{ marginTop: scale(10) }}>
+                        <FilmRow title="Continuar viendo" subtitle="Retoma tu sesión cuántica" items={continueWatching} variant="large" accentColor="#00FF9D" />
+                    </View>
                 )}
 
                 {trending.length > 0 && (
@@ -235,7 +252,7 @@ const s = StyleSheet.create({
         marginRight: 16,
     },
     logoTextMain: {
-        fontSize: scale(22),
+        fontSize: scale(24),
         fontWeight: '900',
         color: '#FFFFFF',
         letterSpacing: 3,
@@ -249,9 +266,9 @@ const s = StyleSheet.create({
         paddingRight: 20,
     },
     navTab: {
-        paddingHorizontal: 14,
-        paddingVertical: 6,
-        borderRadius: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 18,
         backgroundColor: 'rgba(5, 2, 20, 0.4)',
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.15)',
@@ -265,7 +282,7 @@ const s = StyleSheet.create({
         elevation: 4,
     },
     navText: {
-        fontSize: scale(11),
+        fontSize: scale(12),
         fontWeight: '700',
         color: 'rgba(255, 255, 255, 0.8)',
         letterSpacing: 0.5,

@@ -23,8 +23,8 @@ export default function TabLayout() {
         }, [])
     );
 
-    // Restored outer margin as user clarified they wanted internal padding reduced
-    const bottomMargin = insets.bottom > 0 ? insets.bottom : (Platform.OS === 'android' ? 8 : 12);
+    // Slightly elevated bottom margin (+4px) over the previous value
+    const bottomMargin = Math.max(insets.bottom + 4, Platform.OS === 'android' ? 26 : 28);
 
     return (
         <Tabs
@@ -32,7 +32,11 @@ export default function TabLayout() {
                 headerShown: false,
                 tabBarStyle: [
                     styles.tabBar,
-                    { bottom: bottomMargin }
+                    {
+                        bottom: bottomMargin,
+                        paddingBottom: 0,
+                        paddingTop: 0,
+                    }
                 ],
                 tabBarItemStyle: {
                     flex: 1,
@@ -132,10 +136,9 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
     tabBar: {
         position: 'absolute',
-        left: 14,
-        right: 14,
-        height: 56,
-        width:"95%",
+        left: 16,
+        right: 16,
+        height: 68,
         // Irregular asymmetrical cyber geometry restored per user request
         borderTopLeftRadius: 34,
         borderBottomRightRadius: 34,

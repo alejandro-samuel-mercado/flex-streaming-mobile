@@ -119,11 +119,11 @@ export default function FilmDetailScreen() {
     return (
         <FuturisticBackground showOrbs={true}>
             <ScrollView style={s.screen} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: bottomPadding }}>
-                {/* Cinematic Hero with curved bottom line */}
+                {/* Cinematic Hero with straight dissolving bottom gradient */}
                 <View style={s.hero}>
                     <View style={s.heroBgCurveWrap}>
                         <Image source={resolveImageUrl(backdrop)} style={s.heroBg} contentFit="cover" />
-                        <LinearGradient colors={['transparent', 'rgba(5,2,20,0.6)', '#050214']} locations={[0, 0.65, 1]} style={StyleSheet.absoluteFillObject} />
+                        <LinearGradient colors={['transparent', 'rgba(5, 2, 20, 0.4)', 'rgba(5, 2, 20, 0.85)', '#050214']} locations={[0, 0.5, 0.8, 1]} style={StyleSheet.absoluteFillObject} />
                     </View>
 
                     <TouchableOpacity style={[s.backBtn, { top: insets.top + 15 }]} onPress={() => router.back()}>
@@ -316,16 +316,7 @@ const s = StyleSheet.create({
         paddingBottom: 70,
     },
     heroBgCurveWrap: {
-        position: 'absolute',
-        top: 0,
-        left: -(SW * 0.7),
-        width: SW * 2.4,
-        height: '100%',
-        borderBottomLeftRadius: SW * 1.2,
-        borderBottomRightRadius: SW * 1.2,
-        overflow: 'hidden',
-        borderBottomWidth: 2,
-        borderColor: 'rgba(217, 70, 239, 0.4)',
+        ...StyleSheet.absoluteFillObject,
         backgroundColor: '#050214',
     },
     heroBg: { ...StyleSheet.absoluteFillObject, opacity: 0.85 },
@@ -369,18 +360,18 @@ const s = StyleSheet.create({
     typeText: { fontSize: scale(9.5), fontWeight: '900', color: '#00FF9D', textTransform: 'uppercase', letterSpacing: 1.2 },
     adultBadge: { backgroundColor: 'rgba(255, 51, 102, 0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, borderWidth: 1, borderColor: '#FF3366' },
     adultText: { fontSize: scale(9.5), fontWeight: '900', color: '#FF3366' },
-    heroTitle: { fontSize: scale(23), fontWeight: '900', color: Colors.white, textTransform: 'uppercase', lineHeight: 25, marginBottom: 8, letterSpacing: 0.5 },
+    heroTitle: { fontSize: scale(28), fontWeight: '900', color: Colors.white, textTransform: 'uppercase', lineHeight: 25, marginBottom: 8, letterSpacing: 0.5 },
     metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    metaText: { fontSize: scale(12), fontWeight: '800', color: 'rgba(255, 255, 255, 0.75)' },
+    metaText: { fontSize: scale(16), fontWeight: '800', color: 'rgba(255, 255, 255, 0.75)' },
     dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#D946EF' },
     ratingWrap: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(250, 204, 21, 0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: '#FACC15' },
     ratingVal: { fontSize: 11, fontWeight: '900', color: '#FACC15' },
     genreRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
     genreBadge: { backgroundColor: 'rgba(217, 70, 239, 0.15)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 0.8, borderColor: '#D946EF' },
-    genreText: { fontSize: scale(9), fontWeight: '700', color: '#FFFFFF' },
-    heroDescription: { fontSize: scale(12.5), color: 'rgba(255, 255, 255, 0.88)', lineHeight: 19, marginTop: 14, fontWeight: '500', textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
+    genreText: { fontSize: scale(12), fontWeight: '700', color: '#FFFFFF' },
+    heroDescription: { fontSize: scale(15.5), color: 'rgba(255, 255, 255, 0.88)', lineHeight: 19, marginTop: 14, fontWeight: '500', textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
     
-    actionRow: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 20, marginTop: 6, marginBottom: 40 },
+    actionRow: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 20, marginTop: -36, marginBottom: 60 },
     playBtn: { 
         flexDirection: 'row', 
         alignItems: 'center', 

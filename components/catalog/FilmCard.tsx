@@ -27,7 +27,7 @@ interface FilmCardProps {
     onRemove?: () => void;
 }
 
-export default function FilmCard({ id, title, posterUrl, rating, year, type, width = CARD_W, progress, duration, onRemove }: FilmCardProps) {
+function FilmCard({ id, title, posterUrl, rating, year, type, width = CARD_W, progress, duration, onRemove }: FilmCardProps) {
     const router = useRouter();
     const [isFocused, setIsFocused] = useState(false);
     const scale = useSharedValue(1);
@@ -75,9 +75,11 @@ export default function FilmCard({ id, title, posterUrl, rating, year, type, wid
             >
                 <Animated.View style={[s.imageWrap, { width, height: width * 1.5 }, animatedStyle]}>
                     <Image
-                        source={resolveImageUrl(posterUrl)}
+                        source={{ uri: resolveImageUrl(posterUrl) }}
                         contentFit="cover"
-                        transition={300}
+                        transition={150}
+                        cachePolicy="memory-disk"
+                        recyclingKey={id}
                         style={s.image}
                     />
 
@@ -127,6 +129,13 @@ export default function FilmCard({ id, title, posterUrl, rating, year, type, wid
         </View>
     );
 }
+
+export default React.memo(FilmCard, (prev, next) => (
+    prev.id === next.id &&
+    prev.progress === next.progress &&
+    prev.width === next.width &&
+    prev.title === next.title
+));
 
 const s = StyleSheet.create({
     container: {
