@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View,
     Text,
@@ -15,12 +15,12 @@ import { Image } from 'expo-image';
 import Animated, { useAnimatedStyle, withSpring, useSharedValue } from 'react-native-reanimated';
 import { Colors } from '../../theme/colors';
 import { getContentTypeLabel } from '../../lib/content-types';
-import { isTV, scale, UI_SPACING } from '../../lib/responsive';
+import { scale } from '../../lib/responsive';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface HeroSlide {
-    id: string; title: string; description: string; backdropUrl: string;
+    id: string; title: string; description: string; backdropUrl: string | null; posterUrl?: string | null;
     rating?: number | null; year?: number | null; duration?: number | null;
     ageRating?: string; type?: string; genres?: string[]; hasVideo?: boolean;
 }
@@ -29,7 +29,6 @@ export default function HeroBanner({ slides }: { slides: HeroSlide[] }) {
     const router = useRouter();
     const [currentIndex, setCurrentIndex] = useState(0);
     const flatListRef = useRef<FlatList>(null);
-    const scrollX = useSharedValue(0);
     const autoScrollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -38,7 +37,6 @@ export default function HeroBanner({ slides }: { slides: HeroSlide[] }) {
         }
     }).current;
 
-    // Auto-scroll banner every 5 seconds
     useEffect(() => {
         if (slides.length <= 1) return;
         autoScrollTimer.current = setInterval(() => {
@@ -47,65 +45,69 @@ export default function HeroBanner({ slides }: { slides: HeroSlide[] }) {
                 flatListRef.current?.scrollToIndex({ index: next, animated: true });
                 return next;
             });
-        }, 5000);
+        }, 6000);
         return () => { if (autoScrollTimer.current) clearInterval(autoScrollTimer.current); };
     }, [slides.length]);
 
     if (slides.length === 0) return null;
 
-    const renderSlide = ({ item }: { item: HeroSlide }) => (
-        <View style={s.slide}>
-            <Image source={item.backdropUrl} style={s.bgImage} contentFit="cover" transition={500} />
+    const renderSlide = ({ item }: { item: HeroSlide }) => {
+        // Use posterUrl (portada) or backdropUrl
+        const bgSource = item.posterUrl || item.backdropUrl || null;
+        return (
+            <View style={s.slide}>
+                <Image source={bgSource} style={s.bgImage} contentFit="cover" transition={500} />
 
-            <LinearGradient colors={['rgba(3,6,18,0.2)', 'rgba(3,6,18,0.5)', Colors.bg]} locations={[0, 0.4, 0.9]} style={s.gradient} />
-            <LinearGradient colors={['rgba(3,6,18,0.7)', 'transparent']} start={{ x: 0, y: 0.5 }} end={{ x: 0.6, y: 0.5 }} style={s.sideGradient} />
+                {/* Extremely light bottom gradient only, so the portada is 100% visible and bright! */}
+                <LinearGradient 
+                    colors={['transparent', 'rgba(5, 2, 20, 0.4)', '#050214']} 
+                    locations={[0, 0.75, 1]} 
+                    style={s.gradient} 
+                />
 
-            <View style={s.content}>
+                {/* Compact bottom HUD area: buttons on the left, badges on the bottom right */}
+                <View style={s.content}>
+                    <View style={s.actions}>
+                        <CyberButton
+                            style={[s.playBtn, item.hasVideo === false && s.playBtnDisabled]}
+                            onPress={() => router.push(`/film/${item.id}` as any)}
+                            glow={item.hasVideo !== false}
+                        >
+                            <Play size={18} fill={item.hasVideo === false ? 'rgba(255,255,255,0.4)' : 'rgba(0, 255, 157, 0.9)'} color={item.hasVideo === false ? 'rgba(255,255,255,0.4)' : 'rgba(0, 255, 157, 0.9)'} />
+                            {item.hasVideo === false && (
+                                <Text style={s.playBtnText}>Próximamente</Text>
+                            )}
+                        </CyberButton>
+                        
+                        <CyberButton style={s.plusBtn} onPress={() => router.push(`/film/${item.id}` as any)}>
+                            <Plus size={18} color="#FFFFFF" />
+                        </CyberButton>
+                    </View>
 
-                <View style={s.badgeRow}>
-                    {!!item.type && (
-                        <View style={s.typeBadge}>
-                            <Sparkles size={10} color={Colors.primarySoft} />
-                            <Text style={s.typeBadgeText}>{getContentTypeLabel(item.type)}</Text>
-                        </View>
-                    )}
-                    {item.genres?.slice(0, 2).map((g, i) => (
-                        <View key={i} style={s.genreBadge}><Text style={s.genreBadgeText}>{g}</Text></View>
-                    ))}
-                </View>
-
-                <Text style={s.title} numberOfLines={2}>{item.title}</Text>
-
-                <View style={s.metaRow}>
-                    {!!(item.rating && item.rating > 0) && (
-                        <View style={s.ratingBadge}>
-                            <Star size={12} fill={Colors.rating} color={Colors.rating} />
-                            <Text style={s.ratingText}>{item.rating.toFixed(1)}</Text>
-                        </View>
-                    )}
-                    <Text style={s.metaText}>{item.year}</Text>
-                    {!!item.ageRating && <View style={s.ageBadge}><Text style={s.ageText}>{item.ageRating}</Text></View>}
-                </View>
-
-                <Text style={s.description} numberOfLines={2}>{item.description}</Text>
-
-                <View style={s.actions}>
-                    <TVButton
-                        style={[s.playBtn, item.hasVideo === false && s.playBtnDisabled]}
-                        onPress={() => router.push(`/film/${item.id}` as any)}
-                    >
-                        <Play size={18} fill={item.hasVideo === false ? Colors.textMuted : Colors.black} color={item.hasVideo === false ? Colors.textMuted : Colors.black} />
-                        <Text style={[s.playBtnText, item.hasVideo === false && { color: Colors.textMuted }]}>
-                            {item.hasVideo === false ? 'Próximamente' : 'Reproducir'}
-                        </Text>
-                    </TVButton>
-                    <TVButton style={s.plusBtn} onPress={() => router.push(`/film/${item.id}` as any)}>
-                        <Plus size={20} color={Colors.white} />
-                    </TVButton>
+                    {/* Tags moved to the bottom right */}
+                    <View style={s.bottomRightBadges}>
+                        {!!item.type && (
+                            <View style={s.typeBadge}>
+                                <Sparkles size={10} color="rgba(0, 255, 157, 0.75)" />
+                                <Text style={s.typeBadgeText}>{getContentTypeLabel(item.type)}</Text>
+                            </View>
+                        )}
+                        {!!(item.rating && item.rating > 0) && (
+                            <View style={s.ratingBadge}>
+                                <Star size={10} fill="rgba(250, 204, 21, 0.75)" color="rgba(250, 204, 21, 0.75)" />
+                                <Text style={s.ratingText}>{item.rating.toFixed(1)}</Text>
+                            </View>
+                        )}
+                        {!!item.year && <Text style={s.metaText}>{item.year}</Text>}
+                        {item.genres?.slice(0, 1).map((g: any, i: number) => {
+                            const label = typeof g === 'string' ? g : (g?.name || g?.genre?.name || g?.genre?.title || g?.title || 'Género');
+                            return <View key={i} style={s.genreBadge}><Text style={s.genreBadgeText}>{label}</Text></View>;
+                        })}
+                    </View>
                 </View>
             </View>
-        </View>
-    );
+        );
+    };
 
     return (
         <View style={s.container}>
@@ -129,52 +131,89 @@ export default function HeroBanner({ slides }: { slides: HeroSlide[] }) {
     );
 }
 
-function TVButton({ children, onPress, style }: { children: React.ReactNode, onPress: () => void, style?: any }) {
-    const [isFocused, setIsFocused] = useState(false);
+function CyberButton({ children, onPress, style, glow = false }: { children: React.ReactNode, onPress: () => void, style?: any, glow?: boolean }) {
     const scale = useSharedValue(1);
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [{ scale: scale.value }],
-        borderWidth: isFocused ? 2 : (style?.borderWidth || 0),
-        borderColor: isFocused ? Colors.primary : (style?.borderColor || 'transparent'),
     }));
     return (
         <Pressable
-            onFocus={() => { setIsFocused(true); scale.value = withSpring(1.1); }}
-            onBlur={() => { setIsFocused(false); scale.value = withSpring(1); }}
+            onPressIn={() => { scale.value = withSpring(0.93, { damping: 12 }); }}
+            onPressOut={() => { scale.value = withSpring(1, { damping: 12 }); }}
             onPress={onPress}
         >
-            <Animated.View style={[style, animatedStyle]}>{children}</Animated.View>
+            <Animated.View style={[style, glow && s.glowBtn, animatedStyle]}>{children}</Animated.View>
         </Pressable>
     );
 }
 
-const HERO_H = SCREEN_HEIGHT * 0.5;
+// Taller hero banner occupying full image height as requested (was 0.64, now 0.80)
+const HERO_H = SCREEN_HEIGHT * 0.85;
+
 const s = StyleSheet.create({
-    container: { height: HERO_H, position: 'relative', backgroundColor: Colors.bgDark },
+    container: { height: HERO_H, position: 'relative', backgroundColor: '#050214' },
     slide: { width: SCREEN_WIDTH, height: HERO_H },
     bgImage: { ...StyleSheet.absoluteFillObject },
     gradient: { ...StyleSheet.absoluteFillObject },
-    sideGradient: { position: 'absolute', left: 0, top: 0, bottom: 0, width: '100%' },
-    content: { position: 'absolute', bottom: 40, left: 20, right: 20 },
-    badgeRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-    typeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,229,255,0.1)', borderWidth: 1, borderColor: 'rgba(0,229,255,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
-    typeBadgeText: { fontSize: scale(9), fontWeight: '900', color: Colors.primarySoft, letterSpacing: 1.5, textTransform: 'uppercase' },
-    genreBadge: { backgroundColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
-    genreBadgeText: { fontSize: scale(10), fontWeight: '700', color: Colors.textSecondary },
-    title: { fontSize: scale(38, 1.8), fontWeight: '900', color: Colors.white, textTransform: 'uppercase', letterSpacing: -1.5, lineHeight: scale(40, 1.8), marginBottom: scale(12) },
-    metaRow: { flexDirection: 'row', alignItems: 'center', gap: scale(12), marginBottom: scale(14) },
-    ratingBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(245,197,24,0.1)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(245,197,24,0.2)' },
-    ratingText: { fontSize: 12, fontWeight: '900', color: Colors.rating },
-    metaText: { fontSize: 13, fontWeight: '700', color: Colors.textSecondary },
-    ageBadge: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-    ageText: { fontSize: 10, fontWeight: '800', color: Colors.white },
-    description: { fontSize: 14, color: 'rgba(255,255,255,0.7)', lineHeight: 22, marginBottom: 20 },
-    actions: { flexDirection: 'row', gap: 12 },
-    playBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.primary, paddingHorizontal: 32, paddingVertical: 14, borderRadius: 14, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
-    playBtnDisabled: { backgroundColor: 'rgba(255,255,255,0.1)', shadowOpacity: 0 },
-    playBtnText: { fontSize: 14, fontWeight: '900', color: Colors.black, textTransform: 'uppercase', letterSpacing: 1 },
-    plusBtn: { width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-    dots: { position: 'absolute', bottom: 12, left: 20, flexDirection: 'row', gap: 6 },
-    dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.2)' },
-    dotActive: { width: 20, backgroundColor: Colors.primary },
+    content: { 
+        position: 'absolute', 
+        bottom: 35, 
+        left: 30, 
+        right: 30, 
+        flexDirection: 'row', 
+        justifyContent: 'space-between', 
+        alignItems: 'center' 
+    },
+    bottomRightBadges: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        gap: 6,
+        flexWrap: 'wrap',
+        flex: 1,
+        marginLeft: 15,
+    },
+    typeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0, 255, 157, 0.04)', borderWidth: 0.8, borderColor: 'rgba(0, 255, 157, 0.25)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
+    typeBadgeText: { fontSize: scale(9), fontWeight: '800', color: 'rgba(0, 255, 157, 0.75)', letterSpacing: 1, textTransform: 'uppercase' },
+    genreBadge: { backgroundColor: 'rgba(217, 70, 239, 0.04)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, borderWidth: 0.8, borderColor: 'rgba(217, 70, 239, 0.25)' },
+    genreBadgeText: { fontSize: scale(8.5), fontWeight: '700', color: 'rgba(255, 255, 255, 0.75)' },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: scale(8) },
+    ratingBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(250, 204, 21, 0.04)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, borderWidth: 0.8, borderColor: 'rgba(250, 204, 21, 0.25)' },
+    ratingText: { fontSize: 11, fontWeight: '800', color: 'rgba(250, 204, 21, 0.75)' },
+    metaText: { fontSize: 11, fontWeight: '700', color: 'rgba(255, 255, 255, 0.55)' },
+    actions: { flexDirection: 'row', gap: 20, alignItems: 'center', flexWrap: 'wrap' },
+    playBtn: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        gap: 6, 
+        width: 40,
+        height: 40,
+        backgroundColor: 'rgba(0, 255, 157, 0.04)', 
+        borderWidth: 0.8, 
+        borderColor: 'rgba(0, 255, 157, 0.3)', 
+        borderRadius: 14 
+    },
+    glowBtn: { shadowColor: '#00FF9D', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 10, elevation: 6 },
+    playBtnDisabled: { width: 'auto', paddingHorizontal: 14, backgroundColor: 'rgba(255, 255, 255, 0.05)', shadowOpacity: 0 },
+    playBtnText: { 
+        fontSize: 10.5, 
+        fontWeight: '800', 
+        color: 'rgba(255, 255, 255, 0.6)', 
+        textTransform: 'uppercase', 
+        letterSpacing: 1,
+    },
+    plusBtn: { 
+        width: 40, 
+        height: 40, 
+        borderRadius: 14, 
+        backgroundColor: 'rgba(217, 70, 239, 0.04)', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        borderWidth: 0.8, 
+        borderColor: 'rgba(217, 70, 239, 0.3)' 
+    },
+    dots: { position: 'absolute', bottom: 10, right: 16, flexDirection: 'row', gap: 5 },
+    dot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: 'rgba(255, 255, 255, 0.3)' },
+    dotActive: { width: 18, backgroundColor: '#00FF9D', shadowColor: '#00FF9D', shadowRadius: 6, shadowOpacity: 1, elevation: 4 },
 });

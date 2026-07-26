@@ -1,12 +1,13 @@
 import { Tabs } from 'expo-router';
-import { Home, Compass, Heart, User } from 'lucide-react-native';
+import { Home, Compass, Bookmark, User, Sparkles } from 'lucide-react-native';
 import { Colors } from '../../theme/colors';
 import { View, StyleSheet, Platform } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCallback } from 'react';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { useFocusEffect } from 'expo-router';
+import { scale } from '../../lib/responsive';
 
 export default function TabLayout() {
     const insets = useSafeAreaInsets();
@@ -22,9 +23,8 @@ export default function TabLayout() {
         }, [])
     );
 
-    // Respect the safe area bottom inset (gesture bar / nav buttons)
-    // On Android with hardware nav buttons, insets.bottom is 0, so we add a small base padding
-    const bottomPadding = insets.bottom > 0 ? insets.bottom : (Platform.OS === 'android' ? 4 : 0);
+    // Restored outer margin as user clarified they wanted internal padding reduced
+    const bottomMargin = insets.bottom > 0 ? insets.bottom : (Platform.OS === 'android' ? 8 : 12);
 
     return (
         <Tabs
@@ -32,17 +32,46 @@ export default function TabLayout() {
                 headerShown: false,
                 tabBarStyle: [
                     styles.tabBar,
-                    { paddingBottom: bottomPadding, height: 58 + bottomPadding }
+                    { bottom: bottomMargin }
                 ],
                 tabBarItemStyle: {
-                    paddingTop: 8,
+                    flex: 1,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    paddingTop: 0,
+                    paddingBottom: 0,
+                    marginVertical: 0,
                 },
-                tabBarActiveTintColor: Colors.primary,
-                tabBarInactiveTintColor: 'rgba(255,255,255,0.4)',
+                tabBarIconStyle: {
+                    flex: 1,
+                    width: '100%',
+                    height: '100%',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    marginTop: 0,
+                    marginBottom: 0,
+                },
+                tabBarActiveTintColor: '#FFFFFF',
+                tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.45)',
                 tabBarShowLabel: false,
+                // Super fast static background optimized for low-end devices (no heavy real-time BlurView!)
                 tabBarBackground: () => (
-                    <View style={styles.blurContainer}>
-                        <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
+                    <View style={styles.dockContainer}>
+                        <LinearGradient
+                            colors={['#1A0C38', '#0A041A']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={StyleSheet.absoluteFillObject}
+                        />
+                        {/* Glowing top accent strip */}
+                        <View style={styles.topAccentStrip}>
+                            <LinearGradient
+                                colors={['transparent', '#00FF9D', '#D946EF', 'transparent']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={StyleSheet.absoluteFillObject}
+                            />
+                        </View>
                     </View>
                 ),
             }}
@@ -51,9 +80,9 @@ export default function TabLayout() {
                 name="index"
                 options={{
                     tabBarIcon: ({ color, focused }) => (
-                        <View style={styles.iconContainer}>
-                            <Home size={focused ? 26 : 24} color={color} strokeWidth={focused ? 2.5 : 2} />
-                            {focused && <View style={styles.indicator} />}
+                        <View style={[styles.iconContainer, focused && styles.activePod]}>
+                            {focused && <View style={styles.activeGlowDot} />}
+                            <Home size={focused ? 22 : 20} color={focused ? '#FFFFFF' : color} strokeWidth={focused ? 2.6 : 2} />
                         </View>
                     ),
                 }}
@@ -62,20 +91,20 @@ export default function TabLayout() {
                 name="explore"
                 options={{
                     tabBarIcon: ({ color, focused }) => (
-                        <View style={styles.iconContainer}>
-                            <Compass size={focused ? 26 : 24} color={color} strokeWidth={focused ? 2.5 : 2} />
-                            {focused && <View style={styles.indicator} />}
+                        <View style={[styles.iconContainer, focused && styles.activePod]}>
+                            {focused && <View style={styles.activeGlowDot} />}
+                            <Compass size={focused ? 22 : 20} color={focused ? '#FFFFFF' : color} strokeWidth={focused ? 2.6 : 2} />
                         </View>
                     ),
                 }}
             />
             <Tabs.Screen
-                name="favorites"
+                name="my-nuba"
                 options={{
                     tabBarIcon: ({ color, focused }) => (
-                        <View style={styles.iconContainer}>
-                            <Heart size={focused ? 26 : 24} color={color} strokeWidth={focused ? 2.5 : 2} />
-                            {focused && <View style={styles.indicator} />}
+                        <View style={[styles.iconContainer, focused && styles.activePod]}>
+                            {focused && <View style={styles.activeGlowDot} />}
+                            <Bookmark size={focused ? 22 : 20} color={focused ? '#FFFFFF' : color} strokeWidth={focused ? 2.6 : 2} />
                         </View>
                     ),
                 }}
@@ -84,14 +113,15 @@ export default function TabLayout() {
                 name="profile"
                 options={{
                     tabBarIcon: ({ color, focused }) => (
-                        <View style={styles.iconContainer}>
-                            <User size={focused ? 26 : 24} color={color} strokeWidth={focused ? 2.5 : 2} />
-                            {focused && <View style={styles.indicator} />}
+                        <View style={[styles.iconContainer, focused && styles.activePod]}>
+                            {focused && <View style={styles.activeGlowDot} />}
+                            <User size={focused ? 22 : 20} color={focused ? '#FFFFFF' : color} strokeWidth={focused ? 2.6 : 2} />
                         </View>
                     ),
                 }}
             />
-            {/* Hidden Screens to persist tab bar */}
+            {/* Hidden Screens */}
+            <Tabs.Screen name="favorites" options={{ href: null }} />
             <Tabs.Screen name="film/[id]" options={{ href: null }} />
             <Tabs.Screen name="search" options={{ href: null }} />
             <Tabs.Screen name="history" options={{ href: null }} />
@@ -102,37 +132,64 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
     tabBar: {
         position: 'absolute',
-        left: 0,
-        right: 0,
-        bottom: 0,
+        left: 14,
+        right: 14,
+        height: 56,
+        width:"95%",
+        // Irregular asymmetrical cyber geometry restored per user request
+        borderTopLeftRadius: 34,
+        borderBottomRightRadius: 34,
+        borderTopRightRadius: 16,
+        borderBottomLeftRadius: 16,
         backgroundColor: 'transparent',
         borderTopWidth: 0,
-        elevation: 0,
-        shadowOpacity: 0,
+        elevation: 12,
+        shadowColor: '#D946EF',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.45,
+        shadowRadius: 16,
     },
-    blurContainer: {
+    dockContainer: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(10, 14, 35, 0.88)',
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(0, 229, 255, 0.14)',
+        borderTopLeftRadius: 34,
+        borderBottomRightRadius: 34,
+        borderTopRightRadius: 16,
+        borderBottomLeftRadius: 16,
+        overflow: 'hidden',
+        borderWidth: 1.5,
+        borderColor: '#D946EF',
+    },
+    topAccentStrip: {
+        position: 'absolute',
+        top: 0,
+        left: 20,
+        right: 20,
+        height: 3,
     },
     iconContainer: {
         alignItems: 'center',
         justifyContent: 'center',
-        height: '100%',
-        width: 60,
+        height: 40,
+        width: 46,
+        position: 'relative',
+        borderRadius: 20,
     },
-    indicator: {
+    activePod: {
+        backgroundColor: '#D946EF',
+        shadowColor: '#D946EF',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.8,
+        shadowRadius: 10,
+        elevation: 6,
+        transform: [{ scale: 1.05 }],
+    },
+    activeGlowDot: {
         position: 'absolute',
-        bottom: -8,
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: Colors.primary,
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 1,
-        shadowRadius: 8,
-        elevation: 5,
+        top: 4,
+        right: 10,
+        width: 5,
+        height: 5,
+        borderRadius: 2.5,
+        backgroundColor: '#00FF9D',
     },
 });

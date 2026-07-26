@@ -6,13 +6,13 @@ import FAQSection from '../../components/catalog/FAQSection';
 import FilmRow from '../../components/catalog/FilmRow';
 import HeroBanner from '../../components/catalog/HeroBanner';
 import Skeleton from '../../components/ui/Skeleton';
+import { FuturisticBackground } from '../../components/ui/FuturisticBackground';
 import { fetchApi } from '../../lib/api-client';
 import { API_ROUTES, resolveImageUrl } from '../../lib/api-routes';
 import { scale, UI_SPACING } from '../../lib/responsive';
 import { Storage, StorageKeys } from '../../lib/storage';
 import { Colors } from '../../theme/colors';
 
-// Static platform data — same logos as TV version (local PNG assets)
 const STATIC_PLATFORMS = [
     { key: 'netflix',     name: 'Netflix',     logoReq: require('../../assets/platforms/netflix.png'),     brandColor: '#E50914' },
     { key: 'disney',      name: 'Disney+',     logoReq: require('../../assets/platforms/disney.png'),      brandColor: '#00D4FF' },
@@ -22,7 +22,6 @@ const STATIC_PLATFORMS = [
     { key: 'paramount',   name: 'Paramount+',  logoReq: require('../../assets/platforms/paramount.png'),   brandColor: '#0064FF' },
     { key: 'crunchyroll', name: 'Crunchyroll', logoReq: require('../../assets/platforms/crunchyroll.png'), brandColor: '#F47521' },
     { key: 'hulu',        name: 'Hulu',        logoReq: require('../../assets/platforms/hulu.png'),        brandColor: '#1CE783' },
-  
 ];
 
 interface HomepageData {
@@ -46,7 +45,6 @@ function mapContentToFilm(c: any) {
     const poster = resolveImageUrl(c.thumbnails?.find((t: any) => t.type === 'POSTER')?.url);
     const backdrop = resolveImageUrl(c.thumbnails?.find((t: any) => t.type === 'BACKDROP')?.url);
     const genreNames = c.genres?.map((g: any) => g.genre?.name).filter(Boolean) || [];
-    // Content is playable if status is READY or ACTIVE
     const hasVideo = c.status === 'READY' || c.status === 'ACTIVE';
     return {
         id: c.id, title, description: desc,
@@ -64,197 +62,276 @@ export default function HomeScreen() {
     const [continueWatching, setContinueWatching] = useState<any[]>([]);
     const insets = useSafeAreaInsets();
     const router = useRouter();
-    // Bottom padding must clear the tab bar (58px) + safe area
-    const bottomPadding = insets.bottom + 80;
+    const bottomPadding = insets.bottom + 90;
 
     const loadContinueWatching = useCallback(async () => {
         const token = await Storage.get(StorageKeys.ACCESS_TOKEN);
         if (token) {
             try {
-                const cwJson = await fetchApi<any>(`${API_ROUTES.HISTORY.BASE}/continue`);
-                if (cwJson.success && cwJson.data) {
-                    setContinueWatching(cwJson.data.map((h: any) => {
-                        const film = mapContentToFilm(h.content);
-                        if (!film) return null;
-                        return { ...film, episodeId: h.episodeId, progress: h.progress, duration: h.duration, customLink: `/watch/${film.id}${h.episodeId ? `?episodeId=${h.episodeId}` : ''}` };
-                    }).filter((x: any): x is NonNullable<typeof x> => !!x));
+                const json = await fetchApi<any>(API_ROUTES.HISTORY.BASE);
+                if (json.success && json.data) {
+                    const list = (json.data.data || []).slice(0, 10).map((h: any) => {
+                        const f = mapContentToFilm(h.content || h);
+                        return f ? { ...f, progress: h.progress, duration: h.duration } : null;
+                    }).filter(Boolean);
+                    setContinueWatching(list);
                 }
-            } catch (e) {
-                setContinueWatching([]);
-            }
-        } else {
-            setContinueWatching([]);
+            } catch (e) { console.error(e); }
         }
     }, []);
 
-    const load = useCallback(async (isRefresh = false) => {
-        if (isRefresh) setRefreshing(true);
-        else setLoading(true);
-
-        await loadContinueWatching();
-
-        // Fetch homepage data
+    const loadData = useCallback(async () => {
         try {
-            const resJson = await fetchApi<any>(API_ROUTES.HOMEPAGE.DATA);
-            if (resJson.success && resJson.data) {
-                setData(resJson.data);
+            const json = await fetchApi<any>(API_ROUTES.HOMEPAGE.DATA);
+            if (json.success && json.data) {
+                setData(json.data);
             }
-        } catch (e) { console.error('Homepage fetch error:', e); }
-
-        setLoading(false);
-        setRefreshing(false);
+        } catch (e) {
+            console.error('Homepage fetch error:', e);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
     }, []);
-
-    useEffect(() => {
-        load();
-    }, [load]);
 
     useFocusEffect(
         useCallback(() => {
-            // Refrescar solo "Continuar viendo" cada vez que la pantalla vuelve a tener el foco
             loadContinueWatching();
-        }, [loadContinueWatching])
+            if (!data) loadData();
+        }, [loadContinueWatching, loadData, data])
     );
 
-    const onRefresh = useCallback(() => {
-        load(true);
-    }, [load]);
+    const onRefresh = () => {
+        setRefreshing(true);
+        loadData();
+        loadContinueWatching();
+    };
 
     if (loading) {
         return (
-            <View style={s.loader}>
-                <Skeleton height={SCREEN_HEIGHT * 0.6} borderRadius={0} />
-                <View style={{ padding: 20 }}>
-                    <Skeleton width={150} height={24} style={{ marginBottom: 20 }} />
+            <FuturisticBackground showOrbs={true} style={s.loader}>
+                <View style={{ padding: 20, paddingTop: insets.top + 40, gap: 20 }}>
+                    <Skeleton width="100%" height={240} style={{ borderRadius: 24 }} />
+                    <Skeleton width={180} height={24} style={{ borderRadius: 8, marginTop: 10 }} />
                     <View style={{ flexDirection: 'row', gap: 12 }}>
-                        <Skeleton width={140} height={200} borderRadius={14} />
-                        <Skeleton width={140} height={200} borderRadius={14} />
-                        <Skeleton width={140} height={200} borderRadius={14} />
-                    </View>
-                    <Skeleton width={180} height={24} style={{ marginTop: 40, marginBottom: 20 }} />
-                    <View style={{ flexDirection: 'row', gap: 12 }}>
-                        <Skeleton width={140} height={200} borderRadius={14} />
-                        <Skeleton width={140} height={200} borderRadius={14} />
-                        <Skeleton width={140} height={200} borderRadius={14} />
+                        <Skeleton width={130} height={190} style={{ borderRadius: 16 }} />
+                        <Skeleton width={130} height={190} style={{ borderRadius: 16 }} />
+                        <Skeleton width={130} height={190} style={{ borderRadius: 16 }} />
                     </View>
                 </View>
-            </View>
+            </FuturisticBackground>
         );
     }
 
-    const featured = (data?.featured || []).map(mapContentToFilm).filter((x): x is NonNullable<typeof x> => !!x);
-    const trending = (data?.trending || []).map(mapContentToFilm).filter((x): x is NonNullable<typeof x> => !!x);
-    const recent = (data?.recent || []).map(mapContentToFilm).filter((x): x is NonNullable<typeof x> => !!x);
-    const estrenos = (data?.estrenos || []).map(mapContentToFilm).filter((x): x is NonNullable<typeof x> => !!x);
-    const platforms = data?.platforms || [];
+    const heroSlides = (data?.featured || []).map(mapContentToFilm).filter(Boolean) as any[];
+    const trending = (data?.trending || []).map(mapContentToFilm).filter(Boolean) as any[];
+    const recent = (data?.recent || []).map(mapContentToFilm).filter(Boolean) as any[];
+    const estrenos = (data?.estrenos || []).map(mapContentToFilm).filter(Boolean) as any[];
     const faq = data?.faq || [];
 
-    // Banner: try featured first, fallback to trending
-    const bannerSource = featured.length > 0 ? featured : trending;
-    const heroSlides = bannerSource.slice(0, 5).map((f: any) => ({
-        id: f.id, title: f.title, description: f.description || '',
-        backdropUrl: f.backdropUrl || f.posterUrl || 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?q=80&w=2574',
-        rating: f.rating, year: f.year, duration: f.duration, ageRating: f.ageRating, type: f.type, genres: f.genres,
-        hasVideo: f.hasVideo,
-    }));
-
     return (
-        <ScrollView
-            style={s.screen}
-            contentContainerStyle={[s.content, { paddingBottom: bottomPadding }]}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />
-            }
-        >
-            {/* Hero banner — only if we have slides */}
-            {heroSlides.length > 0 && <HeroBanner slides={heroSlides} />}
-
-            {continueWatching.length > 0 && (
-                <FilmRow title="Continuar viendo" subtitle="Retoma donde lo dejaste" items={continueWatching} variant="large" accentColor="#FF6B00" />
-            )}
-
-            {trending.length > 0 && (
-                <FilmRow title="En Tendencia" subtitle="Lo más visto ahora" items={trending} variant="large" accentColor="#FF6B00" />
-            )}
-
-            {recent.length > 0 && (
-                <FilmRow title="Recién Agregados" subtitle="Nuevas incorporaciones" items={recent} variant="large" accentColor={Colors.primary} />
-            )}
-
-            {estrenos.length > 0 && (
-                <FilmRow title="Estrenos" subtitle="Lo último en el catálogo" items={estrenos} variant="large" accentColor="#A855F7" />
-            )}
-
-            {/* Plataformas */}
-            {STATIC_PLATFORMS.length > 0 && (
-                <View style={s.platformsSection}>
-                    <Text style={s.sectionTitle}>Plataformas</Text>
-                    <Text style={s.sectionSub}>Explora por plataforma de streaming</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.platformsList}>
-                        {STATIC_PLATFORMS.map((p) => (
-                            <TouchableOpacity
-                                key={p.key}
-                                style={[s.platformCard, { backgroundColor: p.brandColor + '22', borderColor: p.brandColor + '44' }]}
-                                onPress={() => router.push(`/explore` as any)}
-                                activeOpacity={0.75}
-                            >
-                                <Image
-                                    source={p.logoReq}
-                                    style={s.platformLogo}
-                                    resizeMode="contain"
-                                />
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
+        <FuturisticBackground showOrbs={true}>
+            {/* Transparent Top Nav overlaying Hero (like TV functional version) */}
+            <View style={[s.topNav, { paddingTop: insets.top + 10 }]}>
+                <View style={s.logoWrap}>
+                    <Text style={s.logoTextMain}>NU<Text style={{ color: '#D946EF' }}>BA</Text></Text>
                 </View>
-            )}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.navScroll}>
+                    <TouchableOpacity style={[s.navTab, s.navTabActive]} onPress={() => {}}>
+                        <Text style={[s.navText, s.navTextActive]}>INICIO</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={s.navTab} onPress={() => router.push('/explore?type=SERIES' as any)}>
+                        <Text style={s.navText}>SERIES</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={s.navTab} onPress={() => router.push('/explore?type=MOVIE' as any)}>
+                        <Text style={s.navText}>PELÍCULAS</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={s.navTab} onPress={() => router.push('/explore?type=ANIME' as any)}>
+                        <Text style={s.navText}>ANIME</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={s.navTab} onPress={() => router.push('/explore?type=KIDS' as any)}>
+                        <Text style={s.navText}>KIDS</Text>
+                    </TouchableOpacity>
+                </ScrollView>
+            </View>
 
-            {faq.length > 0 && <FAQSection items={faq} />}
-        </ScrollView>
+            <ScrollView
+                style={s.screen}
+                contentContainerStyle={[s.content, { paddingBottom: bottomPadding }]}
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#D946EF" colors={['#D946EF', '#00FF9D']} />
+                }
+            >
+                {heroSlides.length > 0 && <HeroBanner slides={heroSlides} />}
+
+                {continueWatching.length > 0 && (
+                    <FilmRow title="Continuar viendo" subtitle="Retoma tu sesión cuántica" items={continueWatching} variant="large" accentColor="#00FF9D" />
+                )}
+
+                {trending.length > 0 && (
+                    <FilmRow title="En Tendencia" subtitle="Lo más visto en la red" items={trending} variant="large" accentColor="#D946EF" />
+                )}
+
+                {recent.length > 0 && (
+                    <FilmRow title="Recién Agregados" subtitle="Nuevas transmisiones" items={recent} variant="large" accentColor="#00FF9D" />
+                )}
+
+                {estrenos.length > 0 && (
+                    <FilmRow title="Estrenos" subtitle="Lo último en el hiperespacio" items={estrenos} variant="large" accentColor="#8B5CF6" />
+                )}
+
+                {STATIC_PLATFORMS.length > 0 && (
+                    <View style={s.platformsSection}>
+                        <View style={s.sectionHeaderRow}>
+                            <View style={s.sectionAccentBar} />
+                            <View>
+                                <Text style={s.sectionTitle}>NEXOS POR PLATAFORMA</Text>
+                                <Text style={s.sectionSub}>Frecuencias de streaming integradas</Text>
+                            </View>
+                        </View>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.platformsList}>
+                            {STATIC_PLATFORMS.map((p) => (
+                                <TouchableOpacity
+                                    key={p.key}
+                                    style={s.platformPod}
+                                    onPress={() => router.push(`/explore` as any)}
+                                    activeOpacity={0.8}
+                                >
+                                    <View style={[s.platformInner, { borderColor: p.brandColor + 'AA', backgroundColor: p.brandColor + '18' }]}>
+                                        <Image source={p.logoReq} style={s.platformLogo} resizeMode="contain" />
+                                        <View style={[s.platformGlow, { backgroundColor: p.brandColor }]} />
+                                    </View>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                )}
+
+                {faq.length > 0 && <FAQSection items={faq} />}
+            </ScrollView>
+        </FuturisticBackground>
     );
 }
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
 const s = StyleSheet.create({
-    screen: { flex: 1, backgroundColor: Colors.bg },
+    screen: { flex: 1, backgroundColor: 'transparent' },
     content: { paddingBottom: 20 },
-    loader: { flex: 1, backgroundColor: Colors.bg },
-    platformsSection: { marginBottom: scale(32) },
+    loader: { flex: 1 },
+    
+    topNav: {
+        position: 'absolute',
+        top: 7,
+        left: 0,
+        right: 0,
+        zIndex: 100,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingBottom: 10,
+        backgroundColor: 'transparent',
+    },
+    logoWrap: {
+        marginRight: 16,
+    },
+    logoTextMain: {
+        fontSize: scale(22),
+        fontWeight: '900',
+        color: '#FFFFFF',
+        letterSpacing: 3,
+        textShadowColor: 'rgba(0,0,0,0.9)',
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 6,
+    },
+    navScroll: {
+        alignItems: 'center',
+        gap: 8,
+        paddingRight: 20,
+    },
+    navTab: {
+        paddingHorizontal: 14,
+        paddingVertical: 6,
+        borderRadius: 16,
+        backgroundColor: 'rgba(5, 2, 20, 0.4)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.15)',
+    },
+    navTabActive: {
+        backgroundColor: '#D946EF',
+        borderColor: '#D946EF',
+        shadowColor: '#D946EF',
+        shadowRadius: 8,
+        shadowOpacity: 0.8,
+        elevation: 4,
+    },
+    navText: {
+        fontSize: scale(11),
+        fontWeight: '700',
+        color: 'rgba(255, 255, 255, 0.8)',
+        letterSpacing: 0.5,
+    },
+    navTextActive: {
+        color: '#FFFFFF',
+        fontWeight: '900',
+    },
+    
+    platformsSection: { marginBottom: scale(32), marginTop: scale(16) },
+    sectionHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: UI_SPACING.horizontal,
+        marginBottom: scale(14),
+    },
+    sectionAccentBar: {
+        width: 4,
+        height: 26,
+        backgroundColor: '#00FF9D',
+        borderRadius: 2,
+        marginRight: 10,
+    },
     sectionTitle: {
-        fontSize: scale(20, 1.8),
+        fontSize: scale(16, 1.8),
         fontWeight: '900',
         color: Colors.white,
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        paddingHorizontal: UI_SPACING.horizontal,
+        letterSpacing: 1,
     },
     sectionSub: {
-        fontSize: scale(12, 1.5),
+        fontSize: scale(11, 1.5),
         color: Colors.textMuted,
-        fontWeight: '500',
-        marginTop: 4,
-        marginBottom: scale(16),
-        paddingHorizontal: UI_SPACING.horizontal,
+        fontWeight: '600',
+        marginTop: 2,
     },
     platformsList: {
         paddingHorizontal: UI_SPACING.horizontal,
         gap: scale(12),
     },
-    platformCard: {
-        width: scale(80),
-        height: scale(80),
-        borderRadius: scale(40),
-        borderWidth: 1.5,
-        borderColor: 'rgba(255,255,255,0.1)',
+    platformPod: {
+        width: scale(60),
+        height: scale(60),
+    },
+    platformInner: {
+        width: '100%',
+        height: '100%',
         justifyContent: 'center',
         alignItems: 'center',
+        borderTopLeftRadius: 20,
+        borderBottomRightRadius: 20,
+        borderTopRightRadius: 8,
+        borderBottomLeftRadius: 8,
+        borderWidth: 1.2,
         overflow: 'hidden',
-        backgroundColor: 'rgba(255,255,255,0.06)',
     },
     platformLogo: {
-        width: '70%',
-        height: '70%',
+        width: '68%',
+        height: '68%',
+        zIndex: 2,
+    },
+    platformGlow: {
+        position: 'absolute',
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        opacity: 0.3,
     },
 });

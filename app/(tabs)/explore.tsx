@@ -1,60 +1,61 @@
 import { useRouter } from 'expo-router';
-import { ListFilter, Search, X } from 'lucide-react-native';
+import { ListFilter, Search, X, Zap } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Dimensions, FlatList, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, FlatList, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FilmCard from '../../components/catalog/FilmCard';
+import { FuturisticBackground } from '../../components/ui/FuturisticBackground';
 import { fetchApi } from '../../lib/api-client';
-import { API_ROUTES } from '../../lib/api-routes';
+import { API_ROUTES, resolveImageUrl } from '../../lib/api-routes';
 import { CONTENT_TYPES_LIST, getContentTypeLabel } from '../../lib/content-types';
 import { isTV, scale, UI_SPACING } from '../../lib/responsive';
 import { Colors } from '../../theme/colors';
 
 const { width: SW } = Dimensions.get('window');
 const COLS = isTV ? 5 : 3;
-const GAP = isTV ? 20 : 8;
-const CARD_W = (SW - (UI_SPACING.horizontal * 2) - GAP * (COLS - 1)) / COLS;
+const GAP = scale(12);
+const CARD_W = Math.floor((SW - (UI_SPACING.horizontal * 2) - (GAP * (COLS - 1))) / COLS);
 
 export default function ExploreScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const bottomPadding = insets.bottom > 0 ? insets.bottom + 80 : 100;
-  const [content, setContent] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
   const [type, setType] = useState<string | null>(null);
   const [genreId, setGenreId] = useState<string | null>(null);
   const [platformId, setPlatformId] = useState<string | null>(null);
   const [genres, setGenres] = useState<any[]>([]);
   const [platforms, setPlatforms] = useState<any[]>([]);
-  const [showFilters, setShowFilters] = useState(false);
+  
+  const [content, setContent] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(true);
 
+  const [showFilters, setShowFilters] = useState(false);
+
+  const bottomPadding = insets.bottom > 0 ? insets.bottom + 90 : 110;
+
   useEffect(() => {
-    const fetchMetadata = async () => {
+    const init = async () => {
       try {
-        const [gRes, pRes] = await Promise.all([
+        const [gJson, pJson] = await Promise.all([
           fetchApi<any>(API_ROUTES.CATEGORIES.GENRES),
           fetchApi<any>(API_ROUTES.PLATFORMS.LIST)
         ]);
-        if (gRes.success) setGenres(gRes.data);
-        if (pRes.success) setPlatforms(pRes.data);
-      } catch (e) { console.error('Metadata fetch error:', e); }
+        if (gJson.success) setGenres(gJson.data || []);
+        if (pJson.success) setPlatforms(pJson.data || []);
+      } catch (e) {}
     };
-    fetchMetadata();
+    init();
   }, []);
 
   useEffect(() => {
     const load = async () => {
       if (page === 1) setLoading(true);
       try {
-        const p = new URLSearchParams();
-        p.append('page', String(page));
-        p.append('limit', '30');
-        p.append('sort', 'recent');
+        const p = new URLSearchParams({ page: String(page), limit: '30' });
         if (search) p.append('search', search);
         if (type) p.set('type', type);
         if (genreId) p.set('genreId', genreId);
@@ -72,157 +73,178 @@ export default function ExploreScreen() {
       setIsLoadingMore(false);
     };
     
-    // Si estamos cambiando de página (scroll infinito), cargamos sin delay.
-    // Solo usamos debounce (300ms) cuando se escribe en la búsqueda o se cambia un filtro.
-    const delay = page === 1 ? 300 : 0;
+    const delay = page === 1 ? 250 : 0;
     const t = setTimeout(load, delay);
     return () => clearTimeout(t);
   }, [page, search, type, genreId, platformId]);
 
-  // Reset page and hasMore when filters change
-  useEffect(() => {
-    setPage(1);
-    setHasMore(true);
-  }, [search, type, genreId, platformId]);
-
-  const renderItem = useCallback(({ item }: { item: any }) => {
-    const poster = item.thumbnails?.find((t: any) => t.type === 'POSTER')?.url;
+  const renderItem = useCallback(({ item }: any) => {
+    const poster = resolveImageUrl(item.thumbnails?.find((t: any) => t.type === 'POSTER')?.url);
+    const backdrop = resolveImageUrl(item.thumbnails?.find((t: any) => t.type === 'BACKDROP')?.url);
     return (
       <FilmCard
         id={item.id}
         title={item.translations?.[0]?.title || item.slug}
-        posterUrl={poster}
+        posterUrl={poster || backdrop}
         rating={item.rating}
         year={item.releaseYear}
         type={item.type}
         width={CARD_W}
       />
     );
-  }, [CARD_W]);
+  }, []);
 
   return (
-    <View style={[s.screen, { paddingTop: insets.top + 50 }]}>
-      <Text style={s.title}>Explorar</Text>
-      
-      <View style={s.searchBarContainer}>
-        <View style={s.searchBar}>
-          <Search size={scale(22)} color={Colors.primary} />
-          <TextInput 
-            style={s.searchInput} 
-            placeholder="Películas, series, géneros..." 
-            placeholderTextColor={Colors.textMuted} 
-            value={search} 
-            onChangeText={setSearch} 
-          />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')}>
-              <X size={scale(22)} color={Colors.textMuted} />
-            </TouchableOpacity>
-          )}
+    <FuturisticBackground showOrbs={true}>
+      <View style={[s.screen, { paddingTop: insets.top + 10 }]}>
+        {/* Asymmetrical Cyber Header */}
+        <View style={s.cyberHeader}>
+        
         </View>
-        <TouchableOpacity 
-          style={[s.filterToggle, showFilters && s.filterToggleActive]} 
-          onPress={() => setShowFilters(!showFilters)}
-        >
-          <ListFilter size={scale(24)} color={showFilters ? Colors.black : Colors.primary} />
-        </TouchableOpacity>
-      </View>
 
-      {showFilters && (
-        <View style={[StyleSheet.absoluteFill, { zIndex: 9999, elevation: 9999 }]}>
-          <Pressable style={s.modalOverlay} onPress={() => setShowFilters(false)}>
-            <View style={s.modalContent} onStartShouldSetResponder={() => true}>
-              <View style={s.filterHeader}>
-                <Text style={s.modalTitle}>Filtros</Text>
-                <TouchableOpacity onPress={() => setShowFilters(false)} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-                  <X size={24} color={Colors.white} />
+        {/* Search Bar & Filter Button (Optimized static view without Blur for max FPS) */}
+        <View style={s.searchBarContainer}>
+          <View style={s.searchPod}>
+            <Search color="#D946EF" size={20} />
+            <TextInput
+              style={s.searchInput}
+              placeholder="Buscar en el hiperespacio..."
+              placeholderTextColor="rgba(255, 255, 255, 0.45)"
+              value={search}
+              onChangeText={(t) => { setSearch(t); setPage(1); }}
+              returnKeyType="search"
+            />
+            {!!search && (
+              <TouchableOpacity onPress={() => { setSearch(''); setPage(1); }} style={s.clearIcon}>
+                <X color="#00FF9D" size={18} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <TouchableOpacity
+            style={[s.filterPod, (!!type || !!genreId || !!platformId) && s.filterPodActive]}
+            onPress={() => setShowFilters(true)}
+            activeOpacity={0.8}
+          >
+            <ListFilter color={(!!type || !!genreId || !!platformId) ? '#050214' : '#00FF9D'} size={22} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Filter Native Modal */}
+        <Modal transparent visible={showFilters} animationType="fade" onRequestClose={() => setShowFilters(false)}>
+          <View style={s.modalOverlay}>
+            <TouchableOpacity 
+              style={StyleSheet.absoluteFill} 
+              activeOpacity={1} 
+              onPress={() => setShowFilters(false)} 
+            />
+            <View style={s.modalBox}>
+              <View style={s.modalHeader}>
+                <Text style={s.modalTitle}>FILTROS CUÁNTICOS</Text>
+                <TouchableOpacity onPress={() => setShowFilters(false)}>
+                  <X color="#FF3366" size={24} />
                 </TouchableOpacity>
               </View>
 
-              <ScrollView style={{maxHeight: SW * 1.2}} showsVerticalScrollIndicator={false}>
+              <ScrollView style={{ maxHeight: SW * 1.2 }} showsVerticalScrollIndicator={false}>
                 <View style={s.filterGroup}>
-                  <Text style={s.filterLabel}>Tipo</Text>
+                  <Text style={s.filterLabel}>TIPO DE ARCHIVO</Text>
                   <View style={s.filterRow}>
-                    {[{ type: null, label: 'Todos' }, ...(CONTENT_TYPES_LIST || []).map(t => ({ type: t, label: getContentTypeLabel(t) }))].map(f => (
-                      <FilterChip 
-                        key={f.type || 'all'}
-                        label={f.label} 
-                        active={type === f.type} 
-                        onPress={() => { setType(f.type); setPage(1); }} 
+                    <FilterChip label="Todos" active={!type} onPress={() => { setType(null); setPage(1); }} />
+                    {CONTENT_TYPES_LIST.map((typeKey) => (
+                      <FilterChip
+                        key={typeKey}
+                        label={getContentTypeLabel(typeKey)}
+                        active={type === typeKey}
+                        onPress={() => { setType(typeKey); setPage(1); }}
                       />
                     ))}
                   </View>
                 </View>
 
-                {genres.length > 0 && (
-                  <View style={s.filterGroup}>
-                    <Text style={s.filterLabel}>Géneros</Text>
-                    <View style={s.filterRow}>
-                      {[{ id: null, name: 'Todos' }, ...genres].map(g => (
-                        <FilterChip 
-                          key={g.id || 'all'}
-                          label={g.name} 
-                          active={genreId === g.id} 
-                          onPress={() => { setGenreId(g.id); setPage(1); }} 
-                        />
-                      ))}
-                    </View>
+                <View style={s.filterGroup}>
+                  <Text style={s.filterLabel}>GÉNERO O SECTOR</Text>
+                  <View style={s.filterRow}>
+                    <FilterChip label="Todos" active={!genreId} onPress={() => { setGenreId(null); setPage(1); }} />
+                    {genres.map((g) => (
+                      <FilterChip
+                        key={g.id}
+                        label={g.name}
+                        active={genreId === g.id}
+                        onPress={() => { setGenreId(g.id); setPage(1); }}
+                      />
+                    ))}
                   </View>
-                )}
+                </View>
 
-                {platforms.length > 0 && (
-                  <View style={s.filterGroup}>
-                    <Text style={s.filterLabel}>Plataformas</Text>
-                    <View style={s.filterRow}>
-                      {[{ id: null, name: 'Todas' }, ...platforms].map(p => (
-                        <FilterChip 
-                          key={p.id || 'all'}
-                          label={p.name} 
-                          active={platformId === p.id} 
-                          onPress={() => { setPlatformId(p.id); setPage(1); }} 
-                        />
-                      ))}
-                    </View>
+                <View style={s.filterGroup}>
+                  <Text style={s.filterLabel}>PLATAFORMA ORIGEN</Text>
+                  <View style={s.filterRow}>
+                    <FilterChip label="Todas" active={!platformId} onPress={() => { setPlatformId(null); setPage(1); }} />
+                    {platforms.map((p) => (
+                      <FilterChip
+                        key={p.id}
+                        label={p.name}
+                        active={platformId === p.id}
+                        onPress={() => { setPlatformId(p.id); setPage(1); }}
+                      />
+                    ))}
                   </View>
-                )}
+                </View>
+
+                <TouchableOpacity 
+                  style={s.clearBtn} 
+                  onPress={() => {
+                    setType(null);
+                    setGenreId(null);
+                    setPlatformId(null);
+                    setPage(1);
+                    setShowFilters(false);
+                  }}
+                >
+                  <Text style={s.clearBtnText}>RESETEAR FILTROS</Text>
+                </TouchableOpacity>
               </ScrollView>
             </View>
-          </Pressable>
-        </View>
-      )}
+          </View>
+        </Modal>
 
-      {loading && page === 1 ? (
-        <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 40 }} />
-      ) : (
-        <FlatList
-          key={COLS}
-          data={content}
-          renderItem={renderItem}
-          keyExtractor={(item, index) => `${item.id}-${index}`}
-          numColumns={COLS}
-          columnWrapperStyle={{ gap: GAP }}
-          contentContainerStyle={{ paddingHorizontal: UI_SPACING.horizontal, paddingTop: 8, gap: GAP, paddingBottom: bottomPadding }}
-          showsVerticalScrollIndicator={false}
-          initialNumToRender={12}
-          maxToRenderPerBatch={12}
-          windowSize={5}
-          removeClippedSubviews={Platform.OS === 'android'}
-          ListEmptyComponent={<View style={s.empty}><Text style={s.emptyText}>Sin resultados</Text></View>}
-          onEndReached={() => {
-            if (!loading && !isLoadingMore && hasMore) {
-              setIsLoadingMore(true);
-              setPage(p => p + 1);
+        {/* Content Grid */}
+        {loading ? (
+          <View style={s.loaderContainer}>
+            <ActivityIndicator size="large" color="#D946EF" />
+            <Text style={s.loaderText}>RASTREANDO MATRIZ...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={content}
+            renderItem={renderItem}
+            keyExtractor={(item, index) => `${item.id}-${index}`}
+            numColumns={COLS}
+            columnWrapperStyle={{ gap: GAP }}
+            contentContainerStyle={{ paddingHorizontal: UI_SPACING.horizontal, paddingTop: 8, gap: GAP, paddingBottom: bottomPadding }}
+            showsVerticalScrollIndicator={false}
+            initialNumToRender={12}
+            maxToRenderPerBatch={12}
+            windowSize={5}
+            removeClippedSubviews={Platform.OS === 'android'}
+            ListEmptyComponent={<View style={s.empty}><Text style={s.emptyText}>Sin resultados en esta frecuencia</Text></View>}
+            onEndReached={() => {
+              if (!loading && !isLoadingMore && hasMore) {
+                setIsLoadingMore(true);
+                setPage(p => p + 1);
+              }
+            }}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={
+              <View style={{ height: 60, alignItems: 'center', justifyContent: 'center' }}>
+                {isLoadingMore && <ActivityIndicator size="large" color="#00FF9D" />}
+              </View>
             }
-          }}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={
-            <View style={{ height: 60, alignItems: 'center', justifyContent: 'center' }}>
-              {isLoadingMore && <ActivityIndicator size="large" color={Colors.primary} />}
-            </View>
-          }
-        />
-      )}
-    </View>
+          />
+        )}
+      </View>
+    </FuturisticBackground>
   );
 }
 
@@ -232,10 +254,7 @@ function FilterChip({ label, active, onPress }: any) {
       onPress={onPress}
       style={[
         s.filterChip,
-        {
-          borderColor: active ? Colors.primary : 'rgba(255,255,255,0.1)',
-          backgroundColor: active ? 'rgba(0,229,255,0.15)' : 'rgba(255,255,255,0.05)',
-        }
+        active ? s.filterChipActive : s.filterChipInactive
       ]}
     >
       <Text style={[s.filterText, active && s.filterTextActive]}>{label}</Text>
@@ -244,53 +263,121 @@ function FilterChip({ label, active, onPress }: any) {
 }
 
 const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Colors.bg },
-  title: { fontSize: scale(28), fontWeight: '900', color: Colors.white, marginLeft: UI_SPACING.horizontal, marginBottom: scale(20), textTransform: 'uppercase', letterSpacing: 2 },
-  searchBarContainer: { flexDirection: 'row', gap: 12, paddingHorizontal: UI_SPACING.horizontal, marginBottom: scale(20) },
-  searchBar: { 
-    flex: 1,
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    gap: 12, 
-    backgroundColor: 'rgba(255,255,255,0.04)', 
-    borderWidth: 1, 
-    borderColor: 'rgba(255,255,255,0.08)', 
-    borderRadius: 16, 
-    paddingHorizontal: 16, 
-    height: scale(64, 1.2),
+  screen: { flex: 1, backgroundColor: 'transparent' },
+  cyberHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: UI_SPACING.horizontal,
+    marginBottom: scale(14),
   },
-  filterToggle: { 
-    width: scale(64, 1.2), 
-    height: scale(64, 1.2), 
-    borderRadius: 16, 
-    backgroundColor: 'rgba(255,255,255,0.04)', 
-    borderWidth: 1, 
-    borderColor: 'rgba(255,255,255,0.08)', 
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerTitle: { fontSize: scale(20), fontWeight: '900', color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: 1.5 },
+  countBadge: {
+    backgroundColor: 'rgba(0, 255, 157, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#00FF9D',
+  },
+  countText: { fontSize: scale(10), fontWeight: '900', color: '#00FF9D', letterSpacing: 1 },
+  
+  searchBarContainer: { flexDirection: 'row', gap: 12, paddingHorizontal: UI_SPACING.horizontal, marginBottom: scale(16) },
+  searchPod: {
+    flex: 1,
+    height: scale(54),
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#0F0826',
+    borderTopLeftRadius: 26,
+    borderBottomRightRadius: 26,
+    borderTopRightRadius: 10,
+    borderBottomLeftRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#D946EF',
+  },
+  searchInput: { flex: 1, color: '#FFFFFF', fontSize: scale(15), fontWeight: '700' },
+  clearIcon: { padding: 4 },
+  filterPod: { 
+    width: scale(54), 
+    height: scale(54), 
+    borderTopLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    borderTopRightRadius: 8,
+    borderBottomLeftRadius: 8, 
+    backgroundColor: '#0F0826', 
+    borderWidth: 1.5, 
+    borderColor: '#00FF9D', 
     justifyContent: 'center', 
     alignItems: 'center' 
   },
-  filterToggleActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+  filterPodActive: {
+    backgroundColor: '#00FF9D',
+    borderColor: '#00FF9D',
+    shadowColor: '#00FF9D',
+    shadowRadius: 12,
+    shadowOpacity: 0.8,
+    elevation: 8,
   },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalContent: { width: '100%', backgroundColor: '#111', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  filterHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { color: Colors.white, fontSize: scale(18), fontWeight: 'bold' },
-  filterGroup: { marginBottom: 20 },
-  filterLabel: { fontSize: scale(11), fontWeight: '900', color: Colors.primarySoft, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 },
+  
+  modalOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(5, 2, 20, 0.9)', justifyContent: 'center', alignItems: 'center', padding: 16, zIndex: 1000 },
+  modalBox: {
+    width: '94%',
+    maxHeight: '85%',
+    backgroundColor: '#0F0826',
+    borderTopLeftRadius: 36,
+    borderBottomRightRadius: 36,
+    borderTopRightRadius: 16,
+    borderBottomLeftRadius: 16,
+    borderWidth: 2,
+    borderColor: '#D946EF',
+    padding: 24,
+    shadowColor: '#D946EF',
+    shadowRadius: 20,
+    shadowOpacity: 0.5,
+    elevation: 10,
+  },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalTitle: { color: '#FFFFFF', fontSize: scale(18), fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.5 },
+  filterGroup: { marginBottom: 22 },
+  filterLabel: { fontSize: scale(11), fontWeight: '900', color: '#00FF9D', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 10 },
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: scale(8) },
-  searchInput: { flex: 1, color: Colors.white, fontSize: scale(18), fontWeight: '600' },
   filterChip: { 
-    paddingHorizontal: scale(16), 
-    paddingVertical: scale(10), 
-    borderRadius: 10, 
-    borderWidth: 1,
+    paddingHorizontal: scale(14), 
+    paddingVertical: scale(8), 
+    borderTopLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    borderTopRightRadius: 4,
+    borderBottomLeftRadius: 4, 
+    borderWidth: 1.2,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  filterText: { fontSize: scale(14), fontWeight: '600', color: Colors.textMuted },
-  filterTextActive: { color: Colors.primary },
-  empty: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 60 },
-  emptyText: { color: Colors.textMuted, fontSize: scale(16), fontWeight: '600' },
+  filterChipInactive: {
+    backgroundColor: 'rgba(24, 12, 56, 0.8)',
+    borderColor: 'rgba(217, 70, 239, 0.3)',
+  },
+  filterChipActive: {
+    backgroundColor: '#D946EF',
+    borderColor: '#D946EF',
+    shadowColor: '#D946EF',
+    shadowRadius: 8,
+    shadowOpacity: 0.8,
+    elevation: 4,
+  },
+  filterText: { fontSize: scale(12), fontWeight: '700', color: 'rgba(255, 255, 255, 0.7)' },
+  filterTextActive: { color: '#FFFFFF', fontWeight: '900' },
+  clearBtn: { marginTop: 20, backgroundColor: 'rgba(255, 51, 102, 0.15)', borderWidth: 1.5, borderColor: '#FF3366', paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
+  clearBtnText: { color: '#FF3366', fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.2 },
+  empty: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80 },
+  emptyText: { color: 'rgba(255, 255, 255, 0.5)', fontSize: scale(16), fontWeight: '700' },
+  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80, gap: 12 },
+  loaderText: { color: '#D946EF', fontWeight: '800', letterSpacing: 1.5 },
 });

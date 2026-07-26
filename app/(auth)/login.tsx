@@ -1,18 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Dimensions, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import { Image } from 'expo-image';
-import { Eye, EyeOff, User, Lock, ArrowLeft } from 'lucide-react-native';
+import { Eye, EyeOff, User, Lock, ArrowLeft, Zap, ShieldCheck } from 'lucide-react-native';
 import Animated, { FadeIn, FadeInDown, useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { Colors } from '../../theme/colors';
 import { API_ROUTES } from '../../lib/api-routes';
 import { useAuth } from '../../context/AuthContext';
-import { isTV, scale } from '../../lib/responsive';
-import { Pressable } from 'react-native';
-
-const { height: SH } = Dimensions.get('window');
+import { scale } from '../../lib/responsive';
 
 export default function LoginScreen() {
   const { login, user } = useAuth();
@@ -32,61 +27,78 @@ export default function LoginScreen() {
   if (user) return null;
 
   const handleLogin = async () => {
-    if (!username.trim() || !password.trim()) { setError('Completá todos los campos'); return; }
+    if (!username.trim() || !password.trim()) { setError('Ingresa tus credenciales del sistema'); return; }
     setLoading(true); setError(null);
     try {
       const res = await fetch(API_ROUTES.AUTH.LOGIN, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
       const result = await res.json();
-      if (!result.success) throw new Error(result.error ?? 'Error al iniciar sesión');
+      if (!result.success) throw new Error(result.error ?? 'Error en autenticación cuántica');
       await login(result.data.accessToken, result.data.refreshToken);
       router.replace('/(tabs)' as any);
-    } catch (err) { setError(err instanceof Error ? err.message : 'Error inesperado'); }
+    } catch (err) { setError(err instanceof Error ? err.message : 'Error de acceso a la red'); }
     setLoading(false);
   };
 
   return (
     <View style={s.screen}>
-      <Image source="https://images.unsplash.com/photo-1478720568477-152d9b164e26?q=80&w=2670&auto=format&fit=crop" style={StyleSheet.absoluteFillObject} blurRadius={10} />
-      <LinearGradient colors={['rgba(3,6,18,0.7)', Colors.bg]} style={StyleSheet.absoluteFillObject} />
+      <LinearGradient colors={['#050214', '#130736', '#02010A']} locations={[0, 0.5, 1]} style={StyleSheet.absoluteFillObject} />
+      
+      {/* Irregular diagonal beam in background */}
+      <View style={s.bgBeam}>
+        <LinearGradient colors={['transparent', 'rgba(217, 70, 239, 0.15)', 'rgba(0, 255, 157, 0.1)', 'transparent']} start={{x:0, y:0}} end={{x:1, y:1}} style={StyleSheet.absoluteFillObject} />
+      </View>
 
       <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
-        <BlurView intensity={20} style={s.backBtnBlur}><ArrowLeft size={22} color={Colors.white} /></BlurView>
+        <View style={s.backPod}>
+          <ArrowLeft size={22} color="#FFFFFF" />
+        </View>
       </TouchableOpacity>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.center}>
         <Animated.View entering={FadeInDown.duration(600)} style={s.cardWrap}>
-          <BlurView intensity={40} style={s.card}>
-            <Text style={s.logo}><Text style={{ color: Colors.primary }}>NU</Text>BA</Text>
-            <Text style={s.heading}>Bienvenido</Text>
-            <Text style={s.sub}>Tu cine privado en cualquier lugar.</Text>
+          {/* Static high-contrast cyber portal box optimized for low-end devices */}
+          <View style={s.card}>
+            <View style={s.topStrip} />
 
-            {error && <Animated.View entering={FadeIn.duration(300)} style={s.errorBox}><Text style={s.errorText}>{error}</Text></Animated.View>}
+            <View style={s.logoBadge}>
+              <Zap size={18} color="#00FF9D" />
+              <Text style={s.logoText}>NUBA <Text style={{ color: '#D946EF' }}>QUANTUM</Text></Text>
+            </View>
+
+            <Text style={s.heading}>PORTAL DE ACCESO</Text>
+            <Text style={s.sub}>Autenticación en la red de transmisión</Text>
+
+            {error && (
+              <Animated.View entering={FadeIn.duration(300)} style={s.errorBox}>
+                <Text style={s.errorText}>{error}</Text>
+              </Animated.View>
+            )}
 
             <TVInput 
-              icon={<User size={20} color={Colors.textMuted} />}
-              placeholder="Usuario" 
+              icon={<User size={20} color="#D946EF" />}
+              placeholder="Identificador de Usuario" 
               value={username} 
               onChangeText={setUsername} 
               autoCapitalize="none" 
             />
 
             <TVInput 
-              icon={<Lock size={20} color={Colors.textMuted} />}
-              placeholder="Contraseña" 
+              icon={<Lock size={20} color="#00FF9D" />}
+              placeholder="Clave de Seguridad" 
               value={password} 
               onChangeText={setPassword} 
               secureTextEntry={!showPw}
               rightSlot={
-                <TouchableOpacity onPress={() => setShowPw(!showPw)}>
-                  {showPw ? <EyeOff size={20} color={Colors.textMuted} /> : <Eye size={20} color={Colors.textMuted} />}
+                <TouchableOpacity onPress={() => setShowPw(!showPw)} style={{ padding: 4 }}>
+                  {showPw ? <EyeOff size={20} color="rgba(255,255,255,0.6)" /> : <Eye size={20} color="rgba(255,255,255,0.6)" />}
                 </TouchableOpacity>
               }
             />
 
             <TVButton style={s.submitBtn} onPress={handleLogin} disabled={loading}>
-              {loading ? <ActivityIndicator color={Colors.black} /> : <Text style={s.submitText}>Acceder</Text>}
+              {loading ? <ActivityIndicator color="#050214" /> : <Text style={s.submitText}>INICIAR SESIÓN</Text>}
             </TVButton>
-          </BlurView>
+          </View>
         </Animated.View>
       </KeyboardAvoidingView>
     </View>
@@ -96,11 +108,12 @@ export default function LoginScreen() {
 function TVInput({ icon, rightSlot, ...props }: any) {
   const [isFocused, setIsFocused] = useState(false);
   return (
-    <View style={[s.inputWrap, isFocused && { borderColor: Colors.primary, borderWidth: 2, backgroundColor: 'rgba(0,229,255,0.05)' }]}>
+    <View style={[s.inputWrap, isFocused && s.inputFocused]}>
       {icon}
       <TextInput 
         {...props} 
         style={s.input} 
+        placeholderTextColor="rgba(255, 255, 255, 0.45)"
         onFocus={() => setIsFocused(true)} 
         onBlur={() => setIsFocused(false)}
       />
@@ -110,17 +123,14 @@ function TVInput({ icon, rightSlot, ...props }: any) {
 }
 
 function TVButton({ children, onPress, style, disabled }: any) {
-  const [isFocused, setIsFocused] = useState(false);
   const scaleV = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scaleV.value }],
-    borderWidth: isFocused ? 2 : 0,
-    borderColor: isFocused ? Colors.white : 'transparent',
   }));
   return (
     <Pressable
-      onFocus={() => { setIsFocused(true); scaleV.value = withSpring(1.05); }}
-      onBlur={() => { setIsFocused(false); scaleV.value = withSpring(1); }}
+      onPressIn={() => { scaleV.value = withSpring(0.97); }}
+      onPressOut={() => { scaleV.value = withSpring(1); }}
       onPress={onPress}
       disabled={disabled}
       style={{ width: '100%' }}
@@ -131,19 +141,54 @@ function TVButton({ children, onPress, style, disabled }: any) {
 }
 
 const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Colors.bgDark },
-  backBtn: { position: 'absolute', top: 50, left: 16, zIndex: 100 },
-  backBtnBlur: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
-  center: { flex: 1, justifyContent: 'center', paddingHorizontal: 24 },
-  cardWrap: { borderRadius: 32, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  card: { padding: 32, alignItems: 'center' },
-  logo: { fontSize: 36, fontWeight: '900', color: Colors.white, textAlign: 'center', letterSpacing: 6, marginBottom: 20 },
-  heading: { fontSize: 24, fontWeight: '900', color: Colors.white, marginBottom: 4 },
-  sub: { fontSize: 13, color: Colors.textMuted, marginBottom: 32 },
-  errorBox: { backgroundColor: 'rgba(239,68,68,0.1)', borderLeftWidth: 4, borderLeftColor: Colors.error, padding: 12, borderRadius: 8, marginBottom: 20, width: '100%' },
-  errorText: { color: Colors.errorSoft, fontSize: 12, fontWeight: '700' },
-  inputWrap: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 16, paddingHorizontal: 16, height: 56, marginBottom: 14, width: '100%' },
-  input: { flex: 1, color: Colors.white, fontSize: 15, fontWeight: '500' },
-  submitBtn: { backgroundColor: Colors.primary, borderRadius: 16, height: 56, justifyContent: 'center', alignItems: 'center', marginTop: 12, width: '100%', shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
-  submitText: { fontSize: 15, fontWeight: '900', color: Colors.black, textTransform: 'uppercase', letterSpacing: 2 },
+  screen: { flex: 1, backgroundColor: '#050214' },
+  bgBeam: { position: 'absolute', width: 600, height: 250, top: '30%', left: -100, transform: [{ rotate: '-20deg' }] },
+  backBtn: { position: 'absolute', top: 50, left: 20, zIndex: 100 },
+  backPod: { 
+    width: 44, 
+    height: 44, 
+    borderTopLeftRadius: 18, 
+    borderBottomRightRadius: 18, 
+    borderTopRightRadius: 6, 
+    borderBottomLeftRadius: 6, 
+    backgroundColor: '#0F0826', 
+    borderWidth: 1.5, 
+    borderColor: '#D946EF', 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    shadowColor: '#D946EF',
+    shadowRadius: 8,
+    shadowOpacity: 0.5,
+    elevation: 6,
+  },
+  center: { flex: 1, justifyContent: 'center', paddingHorizontal: 20 },
+  cardWrap: { width: '100%' },
+  card: { 
+    backgroundColor: '#0F0826', 
+    borderTopLeftRadius: 40, 
+    borderBottomRightRadius: 40, 
+    borderTopRightRadius: 16, 
+    borderBottomLeftRadius: 16, 
+    borderWidth: 2, 
+    borderColor: '#D946EF', 
+    padding: 28, 
+    alignItems: 'center',
+    shadowColor: '#D946EF',
+    shadowRadius: 20,
+    shadowOpacity: 0.5,
+    elevation: 10,
+    overflow: 'hidden',
+  },
+  topStrip: { position: 'absolute', top: 0, left: 30, right: 30, height: 4, backgroundColor: '#00FF9D' },
+  logoBadge: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(0, 255, 157, 0.12)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#00FF9D', marginBottom: 20 },
+  logoText: { fontSize: scale(18), fontWeight: '900', color: '#FFFFFF', letterSpacing: 3 },
+  heading: { fontSize: scale(22), fontWeight: '900', color: '#FFFFFF', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 },
+  sub: { fontSize: scale(12), color: 'rgba(255, 255, 255, 0.6)', marginBottom: 28, textAlign: 'center' },
+  errorBox: { backgroundColor: 'rgba(255, 51, 102, 0.15)', borderWidth: 1, borderColor: '#FF3366', padding: 12, borderRadius: 12, marginBottom: 20, width: '100%' },
+  errorText: { color: '#FF3366', fontSize: scale(12), fontWeight: '800', textAlign: 'center' },
+  inputWrap: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#050214', borderWidth: 1.5, borderColor: 'rgba(217, 70, 239, 0.3)', borderTopLeftRadius: 18, borderBottomRightRadius: 18, borderTopRightRadius: 6, borderBottomLeftRadius: 6, paddingHorizontal: 16, height: 56, marginBottom: 16, width: '100%' },
+  inputFocused: { borderColor: '#00FF9D', backgroundColor: 'rgba(0, 255, 157, 0.05)', shadowColor: '#00FF9D', shadowRadius: 8, shadowOpacity: 0.5, elevation: 4 },
+  input: { flex: 1, color: '#FFFFFF', fontSize: scale(15), fontWeight: '600' },
+  submitBtn: { backgroundColor: '#D946EF', borderTopLeftRadius: 22, borderBottomRightRadius: 22, borderTopRightRadius: 8, borderBottomLeftRadius: 8, height: 56, justifyContent: 'center', alignItems: 'center', marginTop: 12, width: '100%', shadowColor: '#D946EF', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.8, shadowRadius: 16, elevation: 8 },
+  submitText: { fontSize: scale(15), fontWeight: '900', color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: 2 },
 });

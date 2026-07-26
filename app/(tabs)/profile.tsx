@@ -4,7 +4,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { Colors } from '../../theme/colors';
-import { User, Hexagon, Calendar, Smartphone, Clock, Heart, ChevronRight, LogOut } from 'lucide-react-native';
+import { User, Calendar, Smartphone, Clock, Heart, ChevronRight, LogOut, Sparkles, Shield, Zap } from 'lucide-react-native';
+import { FuturisticBackground } from '../../components/ui/FuturisticBackground';
+import { scale } from '../../lib/responsive';
 
 const formatEspanishDate = (d: Date) => {
     const months = ['ene.', 'feb.', 'mar.', 'abr.', 'may.', 'jun.', 'jul.', 'ago.', 'sep.', 'oct.', 'nov.', 'dic.'];
@@ -16,18 +18,32 @@ export default function ProfileScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
 
-    if (loading) return <View style={s.loader}><ActivityIndicator size="large" color={Colors.primary} /></View>;
+    if (loading) {
+        return (
+            <FuturisticBackground style={s.loader}>
+                <ActivityIndicator size="large" color="#D946EF" />
+            </FuturisticBackground>
+        );
+    }
 
     if (!user) {
         return (
-            <View style={s.noAuth}>
-                <User size={48} color="rgba(255,255,255,0.1)" />
-                <Text style={s.noAuthTitle}>Iniciá sesión</Text>
-                <Text style={s.noAuthSub}>Accedé a tu perfil, favoritos e historial.</Text>
-                <TouchableOpacity style={s.loginBtn} onPress={() => router.push('/(auth)/login' as any)}>
-                    <Text style={s.loginBtnText}>Iniciar Sesión</Text>
-                </TouchableOpacity>
-            </View>
+            <FuturisticBackground showOrbs={true}>
+                <View style={s.noAuth}>
+                    <View style={s.cyberCard}>
+                        <View style={s.noAuthInner}>
+                            <View style={s.iconHex}>
+                                <User size={48} color="#D946EF" />
+                            </View>
+                            <Text style={s.noAuthTitle}>IDENTIFICACIÓN REQUERIDA</Text>
+                            <Text style={s.noAuthSub}>Conéctate a la red Nuba Quantum para gestionar tu membresía y marcadores del sistema.</Text>
+                            <TouchableOpacity style={s.loginBtn} onPress={() => router.push('/(auth)/login' as any)}>
+                                <Text style={s.loginBtnText}>CONECTAR AHORA</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </FuturisticBackground>
         );
     }
 
@@ -39,152 +55,184 @@ export default function ProfileScreen() {
     const progressPercent = totalDays > 0 ? (usedDays / totalDays) * 100 : 0;
 
     return (
-        <ScrollView style={s.screen} contentContainerStyle={{ paddingBottom: insets.bottom > 0 ? insets.bottom + 140 : 160 }} showsVerticalScrollIndicator={false}>
-            {/* Hero Section */}
-            <View style={s.heroContainer}>
-                <View style={s.avatar}>
-                    <Text style={s.avatarText}>{user.name ? user.name.charAt(0).toUpperCase() : 'U'}</Text>
-                </View>
-                <Text style={s.userName}>{user.name}</Text>
-                <View style={s.roleBadge}>
-                    <Hexagon size={14} color="#9CA3AF" />
-                    <Text style={s.roleText}>USUARIO</Text>
-                </View>
-            </View>
-
-            {/* Plan Activo Section */}
-            {endUser?.plan && (
-                <>
-                    <View style={s.planCard}>
-                        <View style={s.planHeaderRow}>
-                            <View>
-                                <Text style={s.planLabel}>PLAN ACTIVO</Text>
-                                <Text style={s.planName}>{endUser.plan.name}</Text>
-                            </View>
-                            <View style={s.activeBadge}>
-                                <View style={s.activeDot} />
-                                <Text style={s.activeText}>Activo</Text>
-                            </View>
-                        </View>
-
-                        <View style={s.progressRowTop}>
-                            <Text style={s.daysUsed}>{usedDays}D USADOS</Text>
-                            <Text style={s.daysRemaining}>{remainingDays}d restantes</Text>
-                        </View>
-                        
-                        <View style={s.progressBarBg}>
-                            <View style={[s.progressBarFill, { width: `${progressPercent}%` }]} />
-                        </View>
-
-                        <View style={s.progressRowBottom}>
-                            <Text style={s.progressMuted}>Inicio</Text>
-                            <Text style={s.progressMuted}>{totalDays}d total</Text>
+        <FuturisticBackground showOrbs={true}>
+            <ScrollView style={s.screen} contentContainerStyle={{ paddingBottom: insets.bottom > 0 ? insets.bottom + 120 : 140 }} showsVerticalScrollIndicator={false}>
+                {/* Hero Section */}
+                <View style={[s.heroContainer, { paddingTop: insets.top + 16 }]}>
+                    <View style={s.avatarWrap}>
+                        <View style={s.avatarCyber}>
+                            <Text style={s.avatarText}>{user.name ? user.name.charAt(0).toUpperCase() : 'U'}</Text>
+                            <View style={s.avatarGlowDot} />
                         </View>
                     </View>
+                    <Text style={s.userName}>{user.name}</Text>
+                    <View style={s.roleBadge}>
+                        <Zap size={14} color="#00FF9D" />
+                        <Text style={s.roleText}>USUARIO </Text>
+                    </View>
+                </View>
 
-                    {/* Stats Row */}
-                    <View style={s.statsRow}>
-                        <View style={s.statCard}>
-                            <Calendar size={22} color={Colors.primary} style={{marginBottom: 10}} />
-                            <Text style={s.statValue}>{endDateObj ? formatEspanishDate(endDateObj) : 'N/A'}</Text>
-                            <Text style={s.statLabel}>VENCIMIENTO</Text>
+                {/* Plan Activo Section */}
+                {endUser?.plan && (
+                    <>
+                        <View style={s.cardWrapper}>
+                            <View style={s.cyberCard}>
+                                <View style={s.planInner}>
+                                    <View style={s.planHeaderRow}>
+                                        <View>
+                                            <Text style={s.planLabel}>MEMBRESÍA ACTIVA // ID</Text>
+                                            <Text style={s.planName}>{endUser.plan.name}</Text>
+                                        </View>
+                                        <View style={s.activeBadge}>
+                                            <View style={s.activeDot} />
+                                            <Text style={s.activeText}>ONLINE</Text>
+                                        </View>
+                                    </View>
+
+                                    <View style={s.progressRowTop}>
+                                        <Text style={s.daysUsed}>{usedDays}d transcurridos</Text>
+                                        <Text style={s.daysRemaining}>{remainingDays}d restantes</Text>
+                                    </View>
+                                    
+                                    <View style={s.progressBarBg}>
+                                        <View style={[s.progressBarFill, { width: `${progressPercent}%` }]} />
+                                    </View>
+
+                                    <View style={s.progressRowBottom}>
+                                        <Text style={s.progressMuted}>Inicio de ciclo</Text>
+                                        <Text style={s.progressMuted}>{totalDays} días totales</Text>
+                                    </View>
+                                </View>
+                            </View>
                         </View>
-                        <View style={s.statCard}>
-                            <Smartphone size={22} color="#FF6B00" style={{marginBottom: 10}} />
-                            <Text style={[s.statValue, {color: '#FF6B00'}]}>{endUser.maxDevices}</Text>
-                            <Text style={s.statLabel}>DISPOSITIVOS</Text>
+
+                        {/* Stats Row */}
+                        <View style={s.statsRow}>
+                            <View style={s.statCol}>
+                                <View style={[s.cyberCardSmall, { borderColor: 'rgba(217, 70, 239, 0.5)' }]}>
+                                    <View style={s.statInner}>
+                                        <Calendar size={22} color="#D946EF" style={{marginBottom: 8}} />
+                                        <Text style={s.statValue}>{endDateObj ? formatEspanishDate(endDateObj) : 'N/A'}</Text>
+                                        <Text style={s.statLabel}>VENCIMIENTO</Text>
+                                    </View>
+                                </View>
+                            </View>
+                            <View style={s.statCol}>
+                                <View style={[s.cyberCardSmall, { borderColor: 'rgba(0, 255, 157, 0.5)' }]}>
+                                    <View style={s.statInner}>
+                                        <Smartphone size={22} color="#00FF9D" style={{marginBottom: 8}} />
+                                        <Text style={[s.statValue, {color: '#00FF9D'}]}>{endUser.maxDevices}</Text>
+                                        <Text style={s.statLabel}>DISPOSITIVOS</Text>
+                                    </View>
+                                </View>
+                            </View>
+                        </View>
+                    </>
+                )}
+
+                {/* Mi Cuenta Section */}
+                <View style={s.sectionContainer}>
+                    <Text style={s.sectionTitle}>SISTEMA DE ARCHIVOS</Text>
+                    <View style={s.cyberCard}>
+                        <View>
+                            <TouchableOpacity style={s.menuItem} onPress={() => router.push('/history' as any)}>
+                                <View style={s.iconWrapperCyan}>
+                                    <Clock size={20} color="#00FF9D" />
+                                </View>
+                                <View style={s.menuItemTexts}>
+                                    <Text style={s.menuItemTitle}>Historial de Reproducción</Text>
+                                   
+                                </View>
+                                <ChevronRight size={18} color="rgba(255,255,255,0.4)" />
+                            </TouchableOpacity>
+                            
+                            <View style={s.menuDivider} />
+
+                            <TouchableOpacity style={s.menuItem} onPress={() => router.push('/favorites' as any)}>
+                                <View style={s.iconWrapperPink}>
+                                    <Heart size={20} color="#D946EF" />
+                                </View>
+                                <View style={s.menuItemTexts}>
+                                    <Text style={s.menuItemTitle}>Mis Favoritos</Text>
+                                    
+                                </View>
+                                <ChevronRight size={18} color="rgba(255,255,255,0.4)" />
+                            </TouchableOpacity>
                         </View>
                     </View>
-                </>
-            )}
-
-            {/* Mi Cuenta Section */}
-            <View style={s.sectionContainer}>
-                <Text style={s.sectionTitle}>MI CUENTA</Text>
-                <View style={s.menuCard}>
-                    <TouchableOpacity style={s.menuItem} onPress={() => router.push('/history' as any)}>
-                        <View style={s.iconWrapperCyan}>
-                            <Clock size={20} color={Colors.primary} />
-                        </View>
-                        <View style={s.menuItemTexts}>
-                            <Text style={s.menuItemTitle}>Historial</Text>
-                            <Text style={s.menuItemSub}>Contenido visto recientemente</Text>
-                        </View>
-                        <ChevronRight size={18} color="#4B5563" />
-                    </TouchableOpacity>
-                    
-                    <View style={s.menuDivider} />
-
-                    <TouchableOpacity style={s.menuItem} onPress={() => router.push('/favorites' as any)}>
-                        <View style={s.iconWrapperPink}>
-                            <Heart size={20} color="#EC4899" />
-                        </View>
-                        <View style={s.menuItemTexts}>
-                            <Text style={s.menuItemTitle}>Favoritos</Text>
-                            <Text style={s.menuItemSub}>Tu contenido guardado</Text>
-                        </View>
-                        <ChevronRight size={18} color="#4B5563" />
-                    </TouchableOpacity>
                 </View>
-            </View>
 
-            {/* Logout */}
-            <TouchableOpacity style={s.logoutBtn} onPress={() => { logout(); router.replace('/(tabs)' as any); }}>
-                <LogOut size={18} color="#EF4444" />
-                <Text style={s.logoutText}>CERRAR SESIÓN</Text>
-            </TouchableOpacity>
-        </ScrollView>
+                {/* Logout */}
+                <View style={s.logoutWrapper}>
+                    <View style={[s.cyberCardSmall, { borderColor: 'rgba(255, 51, 102, 0.4)' }]}>
+                        <TouchableOpacity style={s.logoutBtn} onPress={() => { logout(); router.replace('/(tabs)' as any); }}>
+                            <LogOut size={18} color="#FF3366" />
+                            <Text style={s.logoutText}>CERRAR SESIÓN</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </ScrollView>
+        </FuturisticBackground>
     );
 }
 
 const s = StyleSheet.create({
-    screen: { flex: 1, backgroundColor: '#030712', paddingTop: 60 },
-    loader: { flex: 1, backgroundColor: '#030712', justifyContent: 'center', alignItems: 'center' },
-    noAuth: { flex: 1, backgroundColor: '#030712', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
-    noAuthTitle: { fontSize: 22, fontWeight: '900', color: Colors.white, marginTop: 16 },
-    noAuthSub: { fontSize: 14, color: Colors.textMuted, marginTop: 4, textAlign: 'center' },
-    loginBtn: { marginTop: 24, backgroundColor: Colors.primary, paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12 },
-    loginBtnText: { fontSize: 15, fontWeight: '900', color: Colors.black, textTransform: 'uppercase' },
+    screen: { flex: 1, backgroundColor: 'transparent' },
+    loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    noAuth: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
+    noAuthInner: { padding: 32, alignItems: 'center', justifyContent: 'center' },
+    iconHex: { width: 80, height: 80, borderRadius: 24, backgroundColor: 'rgba(217, 70, 239, 0.15)', justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: '#D946EF', marginBottom: 12 },
+    noAuthTitle: { fontSize: scale(20), fontWeight: '900', color: Colors.white, marginTop: 8, textTransform: 'uppercase', letterSpacing: 1.5, textAlign: 'center' },
+    noAuthSub: { fontSize: scale(13), color: Colors.textMuted, marginTop: 8, textAlign: 'center', lineHeight: 22 },
+    loginBtn: { marginTop: 24, backgroundColor: '#D946EF', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 16, shadowColor: '#D946EF', shadowRadius: 10, shadowOpacity: 0.8, elevation: 6 },
+    loginBtnText: { fontSize: scale(14), fontWeight: '900', color: Colors.white, textTransform: 'uppercase', letterSpacing: 1.5 },
     
-    heroContainer: { alignItems: 'center', marginBottom: 32 },
-    avatar: { width: 90, height: 90, borderRadius: 45, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
-    avatarText: { fontSize: 36, fontWeight: '900', color: Colors.black },
-    userName: { fontSize: 24, fontWeight: '900', color: Colors.white, marginBottom: 16 },
-    roleBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: '#1F2937', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 24 },
-    roleText: { fontSize: 11, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, textTransform: 'uppercase' },
+    heroContainer: { alignItems: 'center', marginBottom: 28 },
+    avatarWrap: { marginBottom: 16 },
+    avatarCyber: { width: 96, height: 96, borderTopLeftRadius: 36, borderBottomRightRadius: 36, borderTopRightRadius: 14, borderBottomLeftRadius: 14, backgroundColor: '#0F0826', borderWidth: 2.5, borderColor: '#D946EF', justifyContent: 'center', alignItems: 'center', shadowColor: '#D946EF', shadowRadius: 16, shadowOpacity: 0.6, elevation: 8 },
+    avatarText: { fontSize: scale(40), fontWeight: '900', color: '#D946EF' },
+    avatarGlowDot: { position: 'absolute', top: 8, right: 8, width: 10, height: 10, borderRadius: 5, backgroundColor: '#00FF9D' },
+    userName: { fontSize: scale(26), fontWeight: '900', color: Colors.white, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1.5 },
+    roleBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1.5, borderColor: '#00FF9D', backgroundColor: 'rgba(0, 255, 157, 0.15)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20 },
+    roleText: { fontSize: scale(11), fontWeight: '900', color: '#00FF9D', letterSpacing: 2, textTransform: 'uppercase' },
     
-    planCard: { marginHorizontal: 16, marginBottom: 16, padding: 20, backgroundColor: '#0B1120', borderWidth: 1, borderColor: '#1E293B', borderRadius: 20 },
-    planHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
-    planLabel: { fontSize: 11, fontWeight: '800', color: '#6B7280', letterSpacing: 1, marginBottom: 6 },
-    planName: { fontSize: 24, fontWeight: '900', color: Colors.primary },
-    activeBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.3)', backgroundColor: 'rgba(16, 185, 129, 0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-    activeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' },
-    activeText: { color: '#10B981', fontSize: 13, fontWeight: '700' },
+    cardWrapper: { marginHorizontal: 16, marginBottom: 16 },
+    cyberCard: { width: '100%', backgroundColor: '#0F0826', borderTopLeftRadius: 36, borderBottomRightRadius: 36, borderTopRightRadius: 14, borderBottomLeftRadius: 14, borderWidth: 1.5, borderColor: '#D946EF', overflow: 'hidden', shadowColor: '#D946EF', shadowRadius: 12, shadowOpacity: 0.4, elevation: 6 },
+    cyberCardSmall: { width: '100%', backgroundColor: '#0F0826', borderTopLeftRadius: 24, borderBottomRightRadius: 24, borderTopRightRadius: 8, borderBottomLeftRadius: 8, borderWidth: 1.5, overflow: 'hidden' },
+    
+    planInner: { padding: 22 },
+    planHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22 },
+    planLabel: { fontSize: scale(11), fontWeight: '900', color: '#00FF9D', letterSpacing: 1.5, marginBottom: 4 },
+    planName: { fontSize: scale(24), fontWeight: '900', color: Colors.white, textTransform: 'uppercase', letterSpacing: 1 },
+    activeBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1.5, borderColor: '#00FF9D', backgroundColor: 'rgba(0, 255, 157, 0.2)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+    activeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#00FF9D', shadowColor: '#00FF9D', shadowRadius: 6, shadowOpacity: 1 },
+    activeText: { color: '#00FF9D', fontSize: scale(12), fontWeight: '900', letterSpacing: 1 },
     
     progressRowTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-    daysUsed: { fontSize: 12, fontWeight: '800', color: '#6B7280', letterSpacing: 0.5 },
-    daysRemaining: { fontSize: 12, fontWeight: '800', color: '#10B981' },
-    progressBarBg: { height: 6, backgroundColor: '#1F2937', borderRadius: 3, marginBottom: 8 },
-    progressBarFill: { height: 6, backgroundColor: '#10B981', borderRadius: 3 },
+    daysUsed: { fontSize: scale(12), fontWeight: '800', color: Colors.textSecondary, letterSpacing: 0.5 },
+    daysRemaining: { fontSize: scale(12), fontWeight: '900', color: '#00FF9D' },
+    progressBarBg: { height: 8, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 4, marginBottom: 10, overflow: 'hidden' },
+    progressBarFill: { height: 8, backgroundColor: '#00FF9D', borderRadius: 4, shadowColor: '#00FF9D', shadowRadius: 6, shadowOpacity: 1 },
     progressRowBottom: { flexDirection: 'row', justifyContent: 'space-between' },
-    progressMuted: { fontSize: 11, color: '#4B5563' },
+    progressMuted: { fontSize: scale(11), color: Colors.textMuted },
     
-    statsRow: { flexDirection: 'row', marginHorizontal: 16, gap: 12, marginBottom: 32 },
-    statCard: { flex: 1, backgroundColor: '#0B1120', borderWidth: 1, borderColor: '#1E293B', borderRadius: 20, padding: 20, alignItems: 'center' },
-    statValue: { fontSize: 18, fontWeight: '900', color: Colors.primary, marginBottom: 6 },
-    statLabel: { fontSize: 10, fontWeight: '800', color: '#6B7280', letterSpacing: 1 },
+    statsRow: { flexDirection: 'row', marginHorizontal: 16, gap: 12, marginBottom: 28 },
+    statCol: { flex: 1 },
+    statInner: { padding: 16, alignItems: 'center' },
+    statValue: { fontSize: scale(15), fontWeight: '900', color: '#D946EF', marginBottom: 4, textAlign: 'center' },
+    statLabel: { fontSize: scale(10), fontWeight: '900', color: Colors.textMuted, letterSpacing: 1.2 },
     
     sectionContainer: { marginHorizontal: 16, marginBottom: 24 },
-    sectionTitle: { fontSize: 12, fontWeight: '800', color: '#6B7280', letterSpacing: 1, marginBottom: 12, marginLeft: 4 },
-    menuCard: { backgroundColor: '#0B1120', borderWidth: 1, borderColor: '#1E293B', borderRadius: 20 },
-    menuItem: { flexDirection: 'row', alignItems: 'center', padding: 16 },
-    iconWrapperCyan: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(0, 212, 255, 0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-    iconWrapperPink: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(236, 72, 153, 0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
+    sectionTitle: { fontSize: scale(12), fontWeight: '900', color: '#00FF9D', letterSpacing: 1.5, marginBottom: 12, marginLeft: 6 },
+    menuItem: { flexDirection: 'row', alignItems: 'center', padding: 18 },
+    iconWrapperCyan: { width: 44, height: 44, borderTopLeftRadius: 16, borderBottomRightRadius: 16, borderTopRightRadius: 6, borderBottomLeftRadius: 6, backgroundColor: 'rgba(0, 255, 157, 0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 16, borderWidth: 1, borderColor: '#00FF9D' },
+    iconWrapperPink: { width: 44, height: 44, borderTopLeftRadius: 16, borderBottomRightRadius: 16, borderTopRightRadius: 6, borderBottomLeftRadius: 6, backgroundColor: 'rgba(217, 70, 239, 0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 16, borderWidth: 1, borderColor: '#D946EF' },
     menuItemTexts: { flex: 1 },
-    menuItemTitle: { fontSize: 16, fontWeight: '800', color: Colors.white, marginBottom: 2 },
-    menuItemSub: { fontSize: 12, color: '#6B7280' },
-    menuDivider: { height: 1, backgroundColor: '#1E293B', marginLeft: 76, marginRight: 16 },
+    menuItemTitle: { fontSize: scale(16), fontWeight: '800', color: Colors.white, marginBottom: 2 },
+    menuItemSub: { fontSize: scale(12), color: Colors.textMuted },
+    menuDivider: { height: 1, backgroundColor: 'rgba(255, 255, 255, 0.08)', marginLeft: 78, marginRight: 18 },
     
-    logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginHorizontal: 16, marginTop: 8, paddingVertical: 18, borderRadius: 20, backgroundColor: 'rgba(239, 68, 68, 0.05)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.15)' },
-    logoutText: { fontSize: 14, fontWeight: '900', color: '#EF4444', letterSpacing: 1 },
+    logoutWrapper: { marginHorizontal: 16, marginTop: 4 },
+    logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 16 },
+    logoutText: { fontSize: scale(14), fontWeight: '900', color: '#FF3366', letterSpacing: 1.5 },
 });

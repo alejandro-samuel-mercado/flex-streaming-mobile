@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, Pressable, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Star, X } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { TouchableOpacity } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { Colors } from '../../theme/colors';
 import { getContentTypeLabel } from '../../lib/content-types';
@@ -32,28 +31,36 @@ export default function FilmCard({ id, title, posterUrl, rating, year, type, wid
     const router = useRouter();
     const [isFocused, setIsFocused] = useState(false);
     const scale = useSharedValue(1);
-    const glowOpacity = useSharedValue(0);
+    const glowOpacity = useSharedValue(0.15);
 
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [{ scale: scale.value }],
-        borderColor: isFocused ? Colors.primary : 'rgba(255,255,255,0.08)',
-        borderWidth: isFocused ? 2 : 1,
+        borderColor: isFocused ? Colors.primary : 'rgba(0, 229, 255, 0.25)',
+        borderWidth: isFocused ? 2 : 1.2,
         shadowOpacity: glowOpacity.value,
         shadowColor: Colors.primary,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 0 },
+        shadowRadius: 14,
+        shadowOffset: { width: 0, height: 4 },
     }));
 
     const handleFocus = () => {
         setIsFocused(true);
-        scale.value = withSpring(1.05);
-        glowOpacity.value = withSpring(0.5);
+        scale.value = withSpring(1.04, { damping: 12 });
+        glowOpacity.value = withSpring(0.6);
     };
 
     const handleBlur = () => {
         setIsFocused(false);
-        scale.value = withSpring(1);
-        glowOpacity.value = withSpring(0);
+        scale.value = withSpring(1, { damping: 12 });
+        glowOpacity.value = withSpring(0.15);
+    };
+
+    const handlePressIn = () => {
+        scale.value = withSpring(0.96, { damping: 12 });
+    };
+
+    const handlePressOut = () => {
+        scale.value = withSpring(isFocused ? 1.04 : 1, { damping: 12 });
     };
 
     return (
@@ -61,6 +68,8 @@ export default function FilmCard({ id, title, posterUrl, rating, year, type, wid
             <Pressable
                 onFocus={handleFocus}
                 onBlur={handleBlur}
+                onPressIn={handlePressIn}
+                onPressOut={handlePressOut}
                 onPress={() => router.push(`/film/${id}` as any)}
                 style={s.card}
             >
@@ -73,13 +82,14 @@ export default function FilmCard({ id, title, posterUrl, rating, year, type, wid
                     />
 
                     <LinearGradient
-                        colors={['transparent', 'rgba(3,6,18,0.8)']}
+                        colors={['transparent', 'rgba(10,14,35,0.4)', 'rgba(3,6,18,0.92)']}
+                        locations={[0.4, 0.7, 1]}
                         style={s.overlay}
                     />
 
                     {!!(rating && rating > 0) && (
                         <View style={s.ratingBadge}>
-                            <Star size={8} fill={Colors.rating} color={Colors.rating} />
+                            <Star size={10} fill={Colors.rating} color={Colors.rating} />
                             <Text style={s.ratingText}>{rating.toFixed(1)}</Text>
                         </View>
                     )}
@@ -121,18 +131,17 @@ export default function FilmCard({ id, title, posterUrl, rating, year, type, wid
 const s = StyleSheet.create({
     container: {
         position: 'relative',
-        marginBottom: 16,
+        marginBottom: 18,
     },
     card: {
         width: '100%',
     },
     imageWrap: {
-        borderRadius: 14,
+        borderRadius: 16,
         overflow: 'hidden',
-        backgroundColor: 'rgba(255,255,255,0.03)',
+        backgroundColor: 'rgba(15,21,50,0.5)',
         position: 'relative',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.08)',
+        elevation: 6,
     },
     image: {
         width: '100%',
@@ -140,8 +149,6 @@ const s = StyleSheet.create({
     },
     overlay: {
         ...StyleSheet.absoluteFillObject,
-        height: '50%',
-        top: '50%',
     },
     ratingBadge: {
         position: 'absolute',
@@ -150,18 +157,18 @@ const s = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 3,
-        backgroundColor: 'rgba(3,6,18,0.75)',
-        paddingHorizontal: 6,
+        backgroundColor: 'rgba(10, 14, 35, 0.85)',
+        paddingHorizontal: 7,
         paddingVertical: 3,
-        borderRadius: 6,
+        borderRadius: 8,
         borderWidth: 1,
-        borderColor: 'rgba(255,197,24,0.3)',
+        borderColor: 'rgba(245, 197, 24, 0.4)',
     },
     removeBtn: {
         position: 'absolute',
         top: 6,
         left: 6,
-        backgroundColor: 'rgba(220, 38, 38, 0.95)', // Rojo más visible
+        backgroundColor: 'rgba(220, 38, 38, 0.95)',
         width: 32,
         height: 32,
         borderRadius: 16,
@@ -175,7 +182,7 @@ const s = StyleSheet.create({
     ratingText: {
         fontSize: 10,
         fontWeight: '900',
-        color: Colors.white,
+        color: Colors.rating,
     },
     info: {
         marginTop: 8,
@@ -183,7 +190,7 @@ const s = StyleSheet.create({
     },
     title: {
         fontSize: 13,
-        fontWeight: '700',
+        fontWeight: '800',
         color: Colors.white,
         letterSpacing: 0.2,
     },
@@ -199,16 +206,18 @@ const s = StyleSheet.create({
         gap: 6,
     },
     dot: {
-        width: 3,
-        height: 3,
-        borderRadius: 1.5,
+        width: 4,
+        height: 4,
+        borderRadius: 2,
         backgroundColor: Colors.primary,
-        opacity: 0.5,
+        shadowColor: Colors.primary,
+        shadowRadius: 4,
+        shadowOpacity: 1,
     },
     metaText: {
         fontSize: 10,
         fontWeight: '800',
-        color: Colors.textMuted,
+        color: 'rgba(255,255,255,0.5)',
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
@@ -217,8 +226,8 @@ const s = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        height: 3,
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        height: 3.5,
+        backgroundColor: 'rgba(255,255,255,0.15)',
     },
     progressFill: {
         height: '100%',
@@ -226,6 +235,6 @@ const s = StyleSheet.create({
         shadowColor: Colors.primary,
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 1,
-        shadowRadius: 4,
+        shadowRadius: 6,
     },
 });

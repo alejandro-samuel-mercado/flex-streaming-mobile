@@ -324,6 +324,8 @@ export default function WatchScreen() {
 
         const load = async () => {
             setLoading(true);
+            setContent(null);
+            setCurrentEpisode(null);
             setError(null);
             setResumeTime(null);
             setShowResumePopup(false);
