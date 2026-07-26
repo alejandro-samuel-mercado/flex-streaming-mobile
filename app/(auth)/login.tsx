@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Dimensions, Pressable } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Dimensions, Pressable, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Eye, EyeOff, User, Lock, ArrowLeft, Zap, ShieldCheck } from 'lucide-react-native';
@@ -56,58 +56,65 @@ export default function LoginScreen() {
         </TouchableOpacity>
       )}
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.center}>
-        <Animated.View entering={FadeInDown.duration(600)} style={s.cardWrap}>
-          {/* Static high-contrast cyber portal box optimized for low-end devices */}
-          <View style={s.card}>
-            <View style={s.topStrip} />
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <ScrollView 
+          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 20, paddingVertical: 40 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          <Animated.View entering={FadeInDown.duration(600)} style={s.cardWrap}>
+            {/* Static high-contrast cyber portal box optimized for low-end devices */}
+            <View style={s.card}>
+              <View style={s.topStrip} />
 
-            <View style={s.logoBadge}>
-              <Zap size={18} color="#00FF9D" />
-              <Text style={s.logoText}>NUBA <Text style={{ color: '#D946EF' }}>QUANTUM</Text></Text>
+              <View style={s.logoBadge}>
+                <Zap size={18} color="#00FF9D" />
+                <Text style={s.logoText}>NUBA </Text>
+              </View>
+
+              <Text style={s.heading}>PORTAL DE ACCESO</Text>
+             
+
+              {error && (
+                <Animated.View entering={FadeIn.duration(300)} style={s.errorBox}>
+                  <Text style={s.errorText}>{error}</Text>
+                </Animated.View>
+              )}
+
+              <TVInput 
+                icon={<User size={20} color="#D946EF" />}
+                placeholder="Identificador de Usuario" 
+                value={username} 
+                onChangeText={setUsername} 
+                autoCapitalize="none" 
+              />
+
+              <TVInput 
+                icon={<Lock size={20} color="#00FF9D" />}
+                placeholder="Clave de Seguridad" 
+                value={password} 
+                onChangeText={setPassword} 
+                secureTextEntry={!showPw}
+                rightSlot={
+                  <TouchableOpacity onPress={() => setShowPw(!showPw)} style={{ padding: 4 }}>
+                    {showPw ? <EyeOff size={20} color="rgba(255,255,255,0.6)" /> : <Eye size={20} color="rgba(255,255,255,0.6)" />}
+                  </TouchableOpacity>
+                }
+              />
+
+              <TVButton style={s.submitBtn} onPress={handleLogin} disabled={loading}>
+                {loading ? <ActivityIndicator color="#050214" /> : <Text style={s.submitText}>INICIAR SESIÓN</Text>}
+              </TVButton>
             </View>
-
-            <Text style={s.heading}>PORTAL DE ACCESO</Text>
-            <Text style={s.sub}>Autenticación en la red de transmisión</Text>
-
-            {error && (
-              <Animated.View entering={FadeIn.duration(300)} style={s.errorBox}>
-                <Text style={s.errorText}>{error}</Text>
-              </Animated.View>
-            )}
-
-            <TVInput 
-              icon={<User size={20} color="#D946EF" />}
-              placeholder="Identificador de Usuario" 
-              value={username} 
-              onChangeText={setUsername} 
-              autoCapitalize="none" 
-            />
-
-            <TVInput 
-              icon={<Lock size={20} color="#00FF9D" />}
-              placeholder="Clave de Seguridad" 
-              value={password} 
-              onChangeText={setPassword} 
-              secureTextEntry={!showPw}
-              rightSlot={
-                <TouchableOpacity onPress={() => setShowPw(!showPw)} style={{ padding: 4 }}>
-                  {showPw ? <EyeOff size={20} color="rgba(255,255,255,0.6)" /> : <Eye size={20} color="rgba(255,255,255,0.6)" />}
-                </TouchableOpacity>
-              }
-            />
-
-            <TVButton style={s.submitBtn} onPress={handleLogin} disabled={loading}>
-              {loading ? <ActivityIndicator color="#050214" /> : <Text style={s.submitText}>INICIAR SESIÓN</Text>}
-            </TVButton>
-          </View>
-        </Animated.View>
+          </Animated.View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );
 }
 
-function TVInput({ icon, rightSlot, ...props }: any) {
+function TVInput({ icon, rightSlot, onFocus, onBlur, ...props }: any) {
   const [isFocused, setIsFocused] = useState(false);
   return (
     <View style={[s.inputWrap, isFocused && s.inputFocused]}>
@@ -116,8 +123,14 @@ function TVInput({ icon, rightSlot, ...props }: any) {
         {...props} 
         style={s.input} 
         placeholderTextColor="rgba(255, 255, 255, 0.45)"
-        onFocus={() => setIsFocused(true)} 
-        onBlur={() => setIsFocused(false)}
+        onFocus={(e) => {
+          setIsFocused(true);
+          onFocus?.(e);
+        }} 
+        onBlur={(e) => {
+          setIsFocused(false);
+          onBlur?.(e);
+        }}
       />
       {rightSlot}
     </View>
