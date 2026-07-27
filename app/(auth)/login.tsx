@@ -41,11 +41,11 @@ export default function LoginScreen() {
 
   return (
     <View style={s.screen}>
-      <LinearGradient colors={['#050214', '#130736', '#02010A']} locations={[0, 0.5, 1]} style={StyleSheet.absoluteFillObject} />
+      <LinearGradient colors={['#030818', '#130736', '#01040D']} locations={[0, 0.5, 1]} style={StyleSheet.absoluteFillObject} />
       
       {/* Irregular diagonal beam in background */}
       <View style={s.bgBeam}>
-        <LinearGradient colors={['transparent', 'rgba(217, 70, 239, 0.15)', 'rgba(0, 255, 157, 0.1)', 'transparent']} start={{x:0, y:0}} end={{x:1, y:1}} style={StyleSheet.absoluteFillObject} />
+        <LinearGradient colors={['transparent', 'rgba(0, 212, 255, 0.15)', 'rgba(0, 255, 157, 0.1)', 'transparent']} start={{x:0, y:0}} end={{x:1, y:1}} style={StyleSheet.absoluteFillObject} />
       </View>
 
       {!!user && (
@@ -83,7 +83,7 @@ export default function LoginScreen() {
               )}
 
               <TVInput 
-                icon={<User size={20} color="#D946EF" />}
+                icon={<User size={20} color="#00D4FF" />}
                 placeholder="Usuario" 
                 value={username} 
                 onChangeText={setUsername} 
@@ -91,6 +91,7 @@ export default function LoginScreen() {
               />
 
               <TVInput 
+               
                 icon={<Lock size={20} color="#00FF9D" />}
                 placeholder="Contraseña" 
                 value={password} 
@@ -104,7 +105,7 @@ export default function LoginScreen() {
               />
 
               <TVButton style={s.submitBtn} onPress={handleLogin} disabled={loading}>
-                {loading ? <ActivityIndicator color="#050214" /> : <Text style={s.submitText}>INICIAR SESIÓN</Text>}
+                {loading ? <ActivityIndicator color="#030818" /> : <Text style={s.submitText}>INICIAR SESIÓN</Text>}
               </TVButton>
             </View>
           </Animated.View>
@@ -162,7 +163,7 @@ function TVButton({ children, onPress, style, disabled }: any) {
 }
 
 const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#050214' },
+  screen: { flex: 1, backgroundColor: '#030818' },
   bgBeam: { position: 'absolute', width: 600, height: 250, top: '30%', left: -100, transform: [{ rotate: '-20deg' }] },
   backBtn: { position: 'absolute', top: 50, left: 20, zIndex: 100 },
   backPod: { 
@@ -172,12 +173,12 @@ const s = StyleSheet.create({
     borderBottomRightRadius: 18, 
     borderTopRightRadius: 6, 
     borderBottomLeftRadius: 6, 
-    backgroundColor: '#0F0826', 
+    backgroundColor: '#081026', 
     borderWidth: 1.5, 
-    borderColor: '#D946EF', 
+    borderColor: '#00D4FF', 
     justifyContent: 'center', 
     alignItems: 'center',
-    shadowColor: '#D946EF',
+    shadowColor: '#00D4FF',
     shadowRadius: 8,
     shadowOpacity: 0.5,
     elevation: 6,
@@ -185,16 +186,16 @@ const s = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', paddingHorizontal: 20 },
   cardWrap: { width: '100%' },
   card: { 
-    backgroundColor: '#0F0826', 
+    backgroundColor: '#081026', 
     borderTopLeftRadius: 40, 
     borderBottomRightRadius: 40, 
     borderTopRightRadius: 16, 
     borderBottomLeftRadius: 16, 
     borderWidth: 2, 
-    borderColor: '#D946EF', 
+    borderColor: '#00D4FF', 
     padding: 28, 
     alignItems: 'center',
-    shadowColor: '#D946EF',
+    shadowColor: '#00D4FF',
     shadowRadius: 20,
     shadowOpacity: 0.5,
     elevation: 10,
@@ -207,9 +208,9 @@ const s = StyleSheet.create({
   sub: { fontSize: scale(12), color: 'rgba(255, 255, 255, 0.6)', marginBottom: 28, textAlign: 'center' },
   errorBox: { backgroundColor: 'rgba(255, 51, 102, 0.15)', borderWidth: 1, borderColor: '#FF3366', padding: 12, borderRadius: 12, marginBottom: 20, width: '100%' },
   errorText: { color: '#FF3366', fontSize: scale(12), fontWeight: '800', textAlign: 'center' },
-  inputWrap: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#050214', borderWidth: 1.5, borderColor: 'rgba(217, 70, 239, 0.3)', borderTopLeftRadius: 18, borderBottomRightRadius: 18, borderTopRightRadius: 6, borderBottomLeftRadius: 6, paddingHorizontal: 16, height: 56, marginBottom: 16, width: '100%' },
+  inputWrap: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#030818', borderWidth: 1.5, borderColor: 'rgba(0, 212, 255, 0.3)', borderTopLeftRadius: 18, borderBottomRightRadius: 18, borderTopRightRadius: 6, borderBottomLeftRadius: 6, paddingHorizontal: 16, height: 56, marginBottom: 16, width: '100%' },
   inputFocused: { borderColor: '#00FF9D', backgroundColor: 'rgba(0, 255, 157, 0.05)', shadowColor: '#00FF9D', shadowRadius: 8, shadowOpacity: 0.5, elevation: 4 },
   input: { flex: 1, color: '#FFFFFF', fontSize: scale(15), fontWeight: '600' },
-  submitBtn: { backgroundColor: '#D946EF', borderTopLeftRadius: 22, borderBottomRightRadius: 22, borderTopRightRadius: 8, borderBottomLeftRadius: 8, height: 56, justifyContent: 'center', alignItems: 'center', marginTop: 12, width: '100%', shadowColor: '#D946EF', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.8, shadowRadius: 16, elevation: 8 },
+  submitBtn: { backgroundColor: '#00D4FF', borderTopLeftRadius: 22, borderBottomRightRadius: 22, borderTopRightRadius: 8, borderBottomLeftRadius: 8, height: 56, justifyContent: 'center', alignItems: 'center', marginTop: 12, width: '100%', shadowColor: '#00D4FF', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.8, shadowRadius: 16, elevation: 8 },
   submitText: { fontSize: scale(15), fontWeight: '900', color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: 2 },
 });

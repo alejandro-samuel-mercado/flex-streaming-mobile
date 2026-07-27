@@ -7,6 +7,7 @@ import { Colors } from '../../theme/colors';
 import { User, Calendar, Smartphone, Clock, Heart, ChevronRight, LogOut, Sparkles, Shield, Zap } from 'lucide-react-native';
 import { FuturisticBackground } from '../../components/ui/FuturisticBackground';
 import { scale } from '../../lib/responsive';
+import { handleNavScroll } from '../../lib/nav-state';
 
 const formatEspanishDate = (d: Date) => {
     const months = ['ene.', 'feb.', 'mar.', 'abr.', 'may.', 'jun.', 'jul.', 'ago.', 'sep.', 'oct.', 'nov.', 'dic.'];
@@ -21,7 +22,7 @@ export default function ProfileScreen() {
     if (loading) {
         return (
             <FuturisticBackground style={s.loader}>
-                <ActivityIndicator size="large" color="#D946EF" />
+                <ActivityIndicator size="large" color="#00D4FF" />
             </FuturisticBackground>
         );
     }
@@ -33,7 +34,7 @@ export default function ProfileScreen() {
                     <View style={s.cyberCard}>
                         <View style={s.noAuthInner}>
                             <View style={s.iconHex}>
-                                <User size={48} color="#D946EF" />
+                                <User size={48} color="#00D4FF" />
                             </View>
                             <Text style={s.noAuthTitle}>IDENTIFICACIÓN REQUERIDA</Text>
                             <Text style={s.noAuthSub}>Conéctate con los administradores de Nuba para gestionar tu membresía.</Text>
@@ -56,7 +57,7 @@ export default function ProfileScreen() {
 
     return (
         <FuturisticBackground showOrbs={true}>
-            <ScrollView style={s.screen} contentContainerStyle={{ paddingBottom: insets.bottom > 0 ? insets.bottom + 120 : 140 }} showsVerticalScrollIndicator={false}>
+            <ScrollView style={s.screen} contentContainerStyle={{ paddingBottom: insets.bottom > 0 ? insets.bottom + 120 : 140 }} showsVerticalScrollIndicator={false} onScroll={handleNavScroll} scrollEventThrottle={16}>
                 {/* Hero Section */}
                 <View style={[s.heroContainer, { paddingTop: insets.top + 16 }]}>
                     <View style={s.avatarWrap}>
@@ -109,9 +110,9 @@ export default function ProfileScreen() {
                         {/* Stats Row */}
                         <View style={s.statsRow}>
                             <View style={s.statCol}>
-                                <View style={[s.cyberCardSmall, { borderColor: 'rgba(217, 70, 239, 0.5)' }]}>
+                                <View style={[s.cyberCardSmall, { borderColor: 'rgba(0, 212, 255, 0.5)' }]}>
                                     <View style={s.statInner}>
-                                        <Calendar size={22} color="#D946EF" style={{marginBottom: 8}} />
+                                        <Calendar size={22} color="#00D4FF" style={{marginBottom: 8}} />
                                         <Text style={s.statValue}>{endDateObj ? formatEspanishDate(endDateObj) : 'N/A'}</Text>
                                         <Text style={s.statLabel}>VENCIMIENTO</Text>
                                     </View>
@@ -150,7 +151,7 @@ export default function ProfileScreen() {
 
                             <TouchableOpacity style={s.menuItem} onPress={() => router.push('/favorites' as any)}>
                                 <View style={s.iconWrapperPink}>
-                                    <Heart size={20} color="#D946EF" />
+                                    <Heart size={20} color="#00D4FF" />
                                 </View>
                                 <View style={s.menuItemTexts}>
                                     <Text style={s.menuItemTitle}>Mis Favoritos</Text>
@@ -181,24 +182,24 @@ const s = StyleSheet.create({
     loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     noAuth: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
     noAuthInner: { padding: 32, alignItems: 'center', justifyContent: 'center' },
-    iconHex: { width: 80, height: 80, borderRadius: 24, backgroundColor: 'rgba(217, 70, 239, 0.15)', justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: '#D946EF', marginBottom: 12 },
+    iconHex: { width: 80, height: 80, borderRadius: 24, backgroundColor: 'rgba(0, 212, 255, 0.15)', justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: '#00D4FF', marginBottom: 12 },
     noAuthTitle: { fontSize: scale(20), fontWeight: '900', color: Colors.white, marginTop: 8, textTransform: 'uppercase', letterSpacing: 1.5, textAlign: 'center' },
     noAuthSub: { fontSize: scale(13), color: Colors.textMuted, marginTop: 8, textAlign: 'center', lineHeight: 22 },
-    loginBtn: { marginTop: 24, backgroundColor: '#D946EF', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 16, shadowColor: '#D946EF', shadowRadius: 10, shadowOpacity: 0.8, elevation: 6 },
+    loginBtn: { marginTop: 24, backgroundColor: '#00D4FF', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 16, shadowColor: '#00D4FF', shadowRadius: 10, shadowOpacity: 0.8, elevation: 6 },
     loginBtnText: { fontSize: scale(14), fontWeight: '900', color: Colors.white, textTransform: 'uppercase', letterSpacing: 1.5 },
     
     heroContainer: { alignItems: 'center', marginBottom: 28 },
     avatarWrap: { marginBottom: 16 },
-    avatarCyber: { width: 96, height: 96, borderTopLeftRadius: 36, borderBottomRightRadius: 36, borderTopRightRadius: 14, borderBottomLeftRadius: 14, backgroundColor: '#0F0826', borderWidth: 2.5, borderColor: '#D946EF', justifyContent: 'center', alignItems: 'center', shadowColor: '#D946EF', shadowRadius: 16, shadowOpacity: 0.6, elevation: 8 },
-    avatarText: { fontSize: scale(40), fontWeight: '900', color: '#D946EF' },
+    avatarCyber: { width: 96, height: 96, borderTopLeftRadius: 36, borderBottomRightRadius: 36, borderTopRightRadius: 14, borderBottomLeftRadius: 14, backgroundColor: '#081026', borderWidth: 2.5, borderColor: '#00D4FF', justifyContent: 'center', alignItems: 'center', shadowColor: '#00D4FF', shadowRadius: 16, shadowOpacity: 0.6, elevation: 8 },
+    avatarText: { fontSize: scale(40), fontWeight: '900', color: '#00D4FF' },
     avatarGlowDot: { position: 'absolute', top: 8, right: 8, width: 10, height: 10, borderRadius: 5, backgroundColor: '#00FF9D' },
     userName: { fontSize: scale(26), fontWeight: '900', color: Colors.white, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1.5 },
     roleBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1.5, borderColor: '#00FF9D', backgroundColor: 'rgba(0, 255, 157, 0.15)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20 },
     roleText: { fontSize: scale(11), fontWeight: '900', color: '#00FF9D', letterSpacing: 2, textTransform: 'uppercase' },
     
     cardWrapper: { marginHorizontal: 16, marginBottom: 16 },
-    cyberCard: { width: '100%', backgroundColor: '#0F0826', borderTopLeftRadius: 36, borderBottomRightRadius: 36, borderTopRightRadius: 14, borderBottomLeftRadius: 14, borderWidth: 1.5, borderColor: '#D946EF', overflow: 'hidden', shadowColor: '#D946EF', shadowRadius: 12, shadowOpacity: 0.4, elevation: 6 },
-    cyberCardSmall: { width: '100%', backgroundColor: '#0F0826', borderTopLeftRadius: 24, borderBottomRightRadius: 24, borderTopRightRadius: 8, borderBottomLeftRadius: 8, borderWidth: 1.5, overflow: 'hidden' },
+    cyberCard: { width: '100%', backgroundColor: '#081026', borderTopLeftRadius: 36, borderBottomRightRadius: 36, borderTopRightRadius: 14, borderBottomLeftRadius: 14, borderWidth: 1.5, borderColor: '#00D4FF', overflow: 'hidden', shadowColor: '#00D4FF', shadowRadius: 12, shadowOpacity: 0.4, elevation: 6 },
+    cyberCardSmall: { width: '100%', backgroundColor: '#081026', borderTopLeftRadius: 24, borderBottomRightRadius: 24, borderTopRightRadius: 8, borderBottomLeftRadius: 8, borderWidth: 1.5, overflow: 'hidden' },
     
     planInner: { padding: 22 },
     planHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22 },
@@ -219,14 +220,14 @@ const s = StyleSheet.create({
     statsRow: { flexDirection: 'row', marginHorizontal: 16, gap: 12, marginBottom: 28 },
     statCol: { flex: 1 },
     statInner: { padding: 16, alignItems: 'center' },
-    statValue: { fontSize: scale(15), fontWeight: '900', color: '#D946EF', marginBottom: 4, textAlign: 'center' },
+    statValue: { fontSize: scale(15), fontWeight: '900', color: '#00D4FF', marginBottom: 4, textAlign: 'center' },
     statLabel: { fontSize: scale(10), fontWeight: '900', color: Colors.textMuted, letterSpacing: 1.2 },
     
     sectionContainer: { marginHorizontal: 16, marginBottom: 24 },
     sectionTitle: { fontSize: scale(12), fontWeight: '900', color: '#00FF9D', letterSpacing: 1.5, marginBottom: 12, marginLeft: 6 },
     menuItem: { flexDirection: 'row', alignItems: 'center', padding: 18 },
     iconWrapperCyan: { width: 44, height: 44, borderTopLeftRadius: 16, borderBottomRightRadius: 16, borderTopRightRadius: 6, borderBottomLeftRadius: 6, backgroundColor: 'rgba(0, 255, 157, 0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 16, borderWidth: 1, borderColor: '#00FF9D' },
-    iconWrapperPink: { width: 44, height: 44, borderTopLeftRadius: 16, borderBottomRightRadius: 16, borderTopRightRadius: 6, borderBottomLeftRadius: 6, backgroundColor: 'rgba(217, 70, 239, 0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 16, borderWidth: 1, borderColor: '#D946EF' },
+    iconWrapperPink: { width: 44, height: 44, borderTopLeftRadius: 16, borderBottomRightRadius: 16, borderTopRightRadius: 6, borderBottomLeftRadius: 6, backgroundColor: 'rgba(0, 212, 255, 0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 16, borderWidth: 1, borderColor: '#00D4FF' },
     menuItemTexts: { flex: 1 },
     menuItemTitle: { fontSize: scale(16), fontWeight: '800', color: Colors.white, marginBottom: 2 },
     menuItemSub: { fontSize: scale(12), color: Colors.textMuted },

@@ -1,13 +1,15 @@
-import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
-import { Dimensions, Image, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import { Image, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import { handleNavScroll, useNavVisibility } from '../../lib/nav-state';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FAQSection from '../../components/catalog/FAQSection';
 import FilmRow from '../../components/catalog/FilmRow';
 import HeroBanner from '../../components/catalog/HeroBanner';
-import Skeleton from '../../components/ui/Skeleton';
 import { FuturisticBackground } from '../../components/ui/FuturisticBackground';
+import Skeleton from '../../components/ui/Skeleton';
 import { fetchApi } from '../../lib/api-client';
 import { API_ROUTES, resolveImageUrl } from '../../lib/api-routes';
 import { scale, UI_SPACING } from '../../lib/responsive';
@@ -61,9 +63,16 @@ export default function HomeScreen() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [continueWatching, setContinueWatching] = useState<any[]>([]);
+    const [favorites, setFavorites] = useState<any[]>([]);
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const bottomPadding = insets.bottom + 90;
+
+    const navVisible = useNavVisibility();
+    const topNavStyle = useAnimatedStyle(() => ({
+        transform: [{ translateY: (1 - navVisible.value) * -110 }],
+        opacity: navVisible.value,
+    }));
 
     const loadContinueWatching = useCallback(async () => {
         const token = await Storage.get(StorageKeys.ACCESS_TOKEN);
@@ -76,6 +85,20 @@ export default function HomeScreen() {
                         return f ? { ...f, progress: h.progress, duration: h.duration } : null;
                     }).filter(Boolean);
                     setContinueWatching(list);
+                }
+            } catch (e) { console.error(e); }
+        }
+    }, []);
+
+    const loadFavorites = useCallback(async () => {
+        const token = await Storage.get(StorageKeys.ACCESS_TOKEN);
+        if (token) {
+            try {
+                const json = await fetchApi<any>(API_ROUTES.FAVORITES.LIST);
+                if (json.success && json.data) {
+                    const rawFavs = json.data.data || json.data.items || json.data || [];
+                    const list = rawFavs.map((fv: any) => mapContentToFilm(fv.content || fv)).filter(Boolean);
+                    setFavorites(list);
                 }
             } catch (e) { console.error(e); }
         }
@@ -112,14 +135,16 @@ export default function HomeScreen() {
     useFocusEffect(
         useCallback(() => {
             loadContinueWatching();
+            loadFavorites();
             if (!data) loadData();
-        }, [loadContinueWatching, loadData, data])
+        }, [loadContinueWatching, loadFavorites, loadData, data])
     );
 
     const onRefresh = () => {
         setRefreshing(true);
         loadData();
         loadContinueWatching();
+        loadFavorites();
     };
 
     if (loading) {
@@ -147,55 +172,49 @@ export default function HomeScreen() {
     return (
         <FuturisticBackground showOrbs={true}>
             {/* Transparent Top Nav overlaying Hero (like TV functional version) */}
-            <View style={[s.topNav, { paddingTop: insets.top + 10 }]}>
+            <Animated.View style={[s.topNav, { paddingTop: insets.top + 10 }, topNavStyle]}>
                 <View style={s.logoWrap}>
-                    <Text style={s.logoTextMain}>NU<Text style={{ color: '#D946EF' }}>BA</Text></Text>
+                    <Text style={s.logoTextMain}>NU<Text style={{ color: '#00D4FF' }}>BA</Text></Text>
                 </View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.navScroll}>
-                    <TouchableOpacity style={[s.navTab, s.navTabActive]} onPress={() => {}}>
-                        <Text style={[s.navText, s.navTextActive]}>INICIO</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={s.navTab} onPress={() => router.push('/explore?type=SERIES' as any)}>
-                        <Text style={s.navText}>SERIES</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={s.navTab} onPress={() => router.push('/explore?type=MOVIE' as any)}>
+                    <TouchableOpacity style={s.navTab} onPress={() => router.push({ pathname: '/(tabs)/explore', params: { type: 'MOVIE' } } as any)}>
                         <Text style={s.navText}>PELÍCULAS</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={s.navTab} onPress={() => router.push('/explore?type=ANIME' as any)}>
+                    <TouchableOpacity style={s.navTab} onPress={() => router.push({ pathname: '/(tabs)/explore', params: { type: 'SERIES' } } as any)}>
+                        <Text style={s.navText}>SERIES</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={s.navTab} onPress={() => router.push({ pathname: '/(tabs)/explore', params: { type: 'ANIME' } } as any)}>
                         <Text style={s.navText}>ANIME</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={s.navTab} onPress={() => router.push('/explore?type=KIDS' as any)}>
+                    <TouchableOpacity style={s.navTab} onPress={() => router.push({ pathname: '/(tabs)/explore', params: { type: 'KIDS' } } as any)}>
                         <Text style={s.navText}>KIDS</Text>
                     </TouchableOpacity>
                 </ScrollView>
-            </View>
+            </Animated.View>
 
             <ScrollView
                 style={s.screen}
                 contentContainerStyle={[s.content, { paddingBottom: bottomPadding }]}
                 showsVerticalScrollIndicator={false}
+                onScroll={handleNavScroll}
+                scrollEventThrottle={16}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#D946EF" colors={['#D946EF', '#00FF9D']} />
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00D4FF" colors={['#00D4FF', '#00FF9D']} />
                 }
             >
                 {heroSlides.length > 0 && <HeroBanner slides={heroSlides} />}
-
-                {continueWatching.length > 0 && (
-                    <View style={{ marginTop: scale(10) }}>
-                        <FilmRow title="Continuar viendo" subtitle="Retoma tu sesión cuántica" items={continueWatching} variant="large" accentColor="#00FF9D" />
-                    </View>
-                )}
-
-                {trending.length > 0 && (
-                    <FilmRow title="En Tendencia" subtitle="Lo más visto en la red" items={trending} variant="large" accentColor="#D946EF" />
-                )}
-
-                {recent.length > 0 && (
-                    <FilmRow title="Recién Agregados" subtitle="Nuevas transmisiones" items={recent} variant="large" accentColor="#00FF9D" />
-                )}
-
                 {estrenos.length > 0 && (
-                    <FilmRow title="Estrenos" subtitle="Lo último en el hiperespacio" items={estrenos} variant="large" accentColor="#8B5CF6" />
+                    <FilmRow title="Estrenos" items={estrenos} variant="large" accentColor="#0077FF" />
+                )}
+                {recent.length > 0 && (
+                    <FilmRow title="Recién Agregados" items={recent} variant="large" accentColor="#00FF9D" />
+                )}
+                {trending.length > 0 && (
+                    <FilmRow title="En Tendencia" items={trending} variant="large" accentColor="#00D4FF" />
+                )}
+
+                {favorites.length > 0 && (
+                    <FilmRow title="Mis Favoritos"  items={favorites} variant="large" accentColor="#FF3366" />
                 )}
 
                 {STATIC_PLATFORMS.length > 0 && (
@@ -203,23 +222,21 @@ export default function HomeScreen() {
                         <View style={s.sectionHeaderRow}>
                             <View style={s.sectionAccentBar} />
                             <View>
-                                <Text style={s.sectionTitle}>NEXOS POR PLATAFORMA</Text>
-                                <Text style={s.sectionSub}>Frecuencias de streaming integradas</Text>
+                                <Text style={s.sectionTitle}>PLATAFORMAS INTEGRADAS</Text>
+                                
                             </View>
                         </View>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.platformsList}>
                             {STATIC_PLATFORMS.map((p) => (
-                                <TouchableOpacity
+                                <View
                                     key={p.key}
                                     style={s.platformPod}
-                                    onPress={() => router.push(`/explore` as any)}
-                                    activeOpacity={0.8}
                                 >
                                     <View style={[s.platformInner, { borderColor: p.brandColor + 'AA', backgroundColor: p.brandColor + '18' }]}>
                                         <Image source={p.logoReq} style={s.platformLogo} resizeMode="contain" />
                                         <View style={[s.platformGlow, { backgroundColor: p.brandColor }]} />
                                     </View>
-                                </TouchableOpacity>
+                                </View>
                             ))}
                         </ScrollView>
                     </View>
@@ -269,14 +286,14 @@ const s = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 18,
-        backgroundColor: 'rgba(5, 2, 20, 0.4)',
+        backgroundColor: 'rgba(3, 8, 24, 0.4)',
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.15)',
     },
     navTabActive: {
-        backgroundColor: '#D946EF',
-        borderColor: '#D946EF',
-        shadowColor: '#D946EF',
+        backgroundColor: '#00D4FF',
+        borderColor: '#00D4FF',
+        shadowColor: '#00D4FF',
         shadowRadius: 8,
         shadowOpacity: 0.8,
         elevation: 4,

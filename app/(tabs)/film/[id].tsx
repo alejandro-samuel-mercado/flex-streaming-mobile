@@ -18,6 +18,30 @@ import { scale } from '../../../lib/responsive';
 const { width: SW } = Dimensions.get('window');
 const SERIES_TYPES = ['SERIES', 'ANIME', 'NOVELA', 'REALITY_SHOW', 'TALK_SHOW', 'VARIETY_SHOW', 'EDUCATIONAL', 'KIDS', 'FAMILY', 'DOCUDRAMA'];
 
+const ExpandableSynopsis = React.memo(({ description }: { description: string }) => {
+    const [expanded, setExpanded] = useState(false);
+    if (!description) return null;
+    const isLong = description.length > 85;
+    return (
+        <View>
+            <Text style={s.heroDescription} numberOfLines={expanded ? undefined : 2}>
+                {description}
+            </Text>
+            {isLong && (
+                <TouchableOpacity
+                    onPress={() => setExpanded(!expanded)}
+                    style={{ marginTop: 4, alignSelf: 'flex-start' }}
+                    activeOpacity={0.7}
+                >
+                    <Text style={{ color: '#00FF9D', fontSize: scale(13), fontWeight: '800' }}>
+                        {expanded ? 'Ver menos ↑' : 'Ver más ↓'}
+                    </Text>
+                </TouchableOpacity>
+            )}
+        </View>
+    );
+});
+
 export default function FilmDetailScreen() {
     const insets = useSafeAreaInsets();
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -95,7 +119,7 @@ export default function FilmDetailScreen() {
     if (loading) {
         return (
             <FuturisticBackground style={s.loader}>
-                <ActivityIndicator size="large" color="#D946EF" />
+                <ActivityIndicator size="large" color="#00D4FF" />
             </FuturisticBackground>
         );
     }
@@ -103,7 +127,7 @@ export default function FilmDetailScreen() {
     if (!content) {
         return (
             <FuturisticBackground style={s.loader}>
-                <Text style={{ color: Colors.white, fontSize: scale(16), fontWeight: '700' }}>No encontrado en la matriz</Text>
+                <Text style={{ color: Colors.white, fontSize: scale(16), fontWeight: '700' }}>No encontrado</Text>
             </FuturisticBackground>
         );
     }
@@ -123,7 +147,7 @@ export default function FilmDetailScreen() {
                 <View style={s.hero}>
                     <View style={s.heroBgCurveWrap}>
                         <Image source={resolveImageUrl(backdrop)} style={s.heroBg} contentFit="cover" />
-                        <LinearGradient colors={['transparent', 'rgba(5, 2, 20, 0.4)', 'rgba(5, 2, 20, 0.85)', '#050214']} locations={[0, 0.5, 0.8, 1]} style={StyleSheet.absoluteFillObject} />
+                        <LinearGradient colors={['transparent', 'rgba(3, 8, 24, 0.4)', 'rgba(3, 8, 24, 0.85)', '#030818']} locations={[0, 0.5, 0.8, 1]} style={StyleSheet.absoluteFillObject} />
                     </View>
 
                     <TouchableOpacity style={[s.backBtn, { top: insets.top + 15 }]} onPress={() => router.back()}>
@@ -180,9 +204,7 @@ export default function FilmDetailScreen() {
                         </View>
 
                         {/* Synopsis inside hero without container */}
-                        {!!tr.description && (
-                            <Text style={s.heroDescription}>{tr.description}</Text>
-                        )}
+                        <ExpandableSynopsis description={tr.description} />
                     </Animated.View>
                 </View>
 
@@ -200,12 +222,12 @@ export default function FilmDetailScreen() {
                         }}
                         activeOpacity={0.8}
                     >
-                        <Play size={16} fill="#050214" color="#050214" />
+                        <Play size={16} fill="#030818" color="#030818" />
                         <Text style={s.playBtnText}>{canPlay ? 'REPRODUCIR' : 'PRÓXIMAMENTE'}</Text>
                     </TouchableOpacity>
                     
                     <TouchableOpacity style={[s.circleBtn, isFavorited && s.circleBtnActive]} onPress={toggleFav} activeOpacity={0.8}>
-                        {isFavorited ? <Check size={18} color="#D946EF" /> : <Plus size={18} color="#00FF9D" />}
+                        {isFavorited ? <Check size={18} color="#00D4FF" /> : <Plus size={18} color="#00FF9D" />}
                     </TouchableOpacity>
 
                     <TouchableOpacity style={[s.circleBtn, isLiked && s.circleBtnActive]} onPress={toggleLike} activeOpacity={0.8}>
@@ -298,7 +320,7 @@ export default function FilmDetailScreen() {
                             backdropUrl: resolveImageUrl(item.thumbnails?.find((t: any) => t.type === 'BACKDROP')?.url),
                             rating: item.rating, year: item.releaseYear, type: item.type,
                         }))}
-                        accentColor="#D946EF"
+                        accentColor="#00D4FF"
                     />
                 )}
             </ScrollView>
@@ -310,14 +332,14 @@ const s = StyleSheet.create({
     screen: { flex: 1, backgroundColor: 'transparent' },
     loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     hero: { 
-        minHeight: SW * 1.3, 
+        minHeight: SW * 1.6, 
         position: 'relative', 
         justifyContent: 'flex-end', 
         paddingBottom: 70,
     },
     heroBgCurveWrap: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: '#050214',
+        backgroundColor: '#030818',
     },
     heroBg: { ...StyleSheet.absoluteFillObject, opacity: 0.85 },
     backBtn: { position: 'absolute', left: 16, zIndex: 100 },
@@ -328,12 +350,12 @@ const s = StyleSheet.create({
         borderBottomRightRadius: 16, 
         borderTopRightRadius: 6, 
         borderBottomLeftRadius: 6, 
-        backgroundColor: '#0F0826', 
+        backgroundColor: '#081026', 
         borderWidth: 1.5, 
-        borderColor: '#D946EF', 
+        borderColor: '#00D4FF', 
         justifyContent: 'center', 
         alignItems: 'center',
-        shadowColor: '#D946EF',
+        shadowColor: '#00D4FF',
         shadowRadius: 6,
         shadowOpacity: 0.5,
         elevation: 6,
@@ -349,29 +371,29 @@ const s = StyleSheet.create({
         borderBottomLeftRadius: 8, 
         overflow: 'hidden', 
         borderWidth: 2, 
-        borderColor: '#D946EF',
-        backgroundColor: '#0F0826',
+        borderColor: '#00D4FF',
+        backgroundColor: '#081026',
     },
     mainPoster: { width: '100%', height: '100%', zIndex: 2 },
-    posterGlow: { position: 'absolute', bottom: -20, right: -20, width: 60, height: 60, borderRadius: 30, backgroundColor: '#D946EF', opacity: 0.4 },
+    posterGlow: { position: 'absolute', bottom: -20, right: -20, width: 60, height: 60, borderRadius: 30, backgroundColor: '#00D4FF', opacity: 0.4 },
     heroInfo: { flex: 1, paddingBottom: 4 },
     badgeRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
     typeBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(0, 255, 157, 0.15)', paddingHorizontal: 10, paddingVertical: 4, borderTopLeftRadius: 12, borderBottomRightRadius: 12, borderWidth: 1, borderColor: '#00FF9D' },
-    typeText: { fontSize: scale(9.5), fontWeight: '900', color: '#00FF9D', textTransform: 'uppercase', letterSpacing: 1.2 },
+    typeText: { fontSize: scale(8.5), fontWeight: '900', color: '#00FF9D', textTransform: 'uppercase', letterSpacing: 1.2 },
     adultBadge: { backgroundColor: 'rgba(255, 51, 102, 0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, borderWidth: 1, borderColor: '#FF3366' },
     adultText: { fontSize: scale(9.5), fontWeight: '900', color: '#FF3366' },
-    heroTitle: { fontSize: scale(28), fontWeight: '900', color: Colors.white, textTransform: 'uppercase', lineHeight: 25, marginBottom: 8, letterSpacing: 0.5 },
+    heroTitle: { fontSize: scale(26), fontWeight: '900', color: Colors.white, textTransform: 'uppercase', lineHeight: 25, marginBottom: 8, letterSpacing: 0.5 },
     metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    metaText: { fontSize: scale(16), fontWeight: '800', color: 'rgba(255, 255, 255, 0.75)' },
-    dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#D946EF' },
+    metaText: { fontSize: scale(14), fontWeight: '800', color: 'rgba(255, 255, 255, 0.75)' },
+    dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#00D4FF' },
     ratingWrap: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(250, 204, 21, 0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: '#FACC15' },
-    ratingVal: { fontSize: 11, fontWeight: '900', color: '#FACC15' },
+    ratingVal: { fontSize: 10, fontWeight: '900', color: '#FACC15' },
     genreRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
-    genreBadge: { backgroundColor: 'rgba(217, 70, 239, 0.15)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 0.8, borderColor: '#D946EF' },
-    genreText: { fontSize: scale(12), fontWeight: '700', color: '#FFFFFF' },
-    heroDescription: { fontSize: scale(15.5), color: 'rgba(255, 255, 255, 0.88)', lineHeight: 19, marginTop: 14, fontWeight: '500', textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
+    genreBadge: { backgroundColor: 'rgba(0, 212, 255, 0.15)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 0.8, borderColor: '#00D4FF' },
+    genreText: { fontSize: scale(11), fontWeight: '700', color: '#FFFFFF' },
+    heroDescription: { fontSize: scale(14), color: 'rgba(255, 255, 255, 0.88)', lineHeight: 19, marginTop: 14, fontWeight: '500', textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
     
-    actionRow: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 20, marginTop: -36, marginBottom: 60 },
+    actionRow: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 20, marginTop: -36, marginBottom: 30 },
     playBtn: { 
         flexDirection: 'row', 
         alignItems: 'center', 
@@ -391,7 +413,7 @@ const s = StyleSheet.create({
         elevation: 6 
     },
     playBtnDisabled: { backgroundColor: 'rgba(255,255,255,0.15)', shadowOpacity: 0 },
-    playBtnText: { fontSize: scale(12), fontWeight: '900', color: '#050214', textTransform: 'uppercase', letterSpacing: 1.2 },
+    playBtnText: { fontSize: scale(12), fontWeight: '900', color: '#030818', textTransform: 'uppercase', letterSpacing: 1.2 },
     circleBtn: { 
         width: 44, 
         height: 44, 
@@ -399,19 +421,19 @@ const s = StyleSheet.create({
         borderBottomRightRadius: 16, 
         borderTopRightRadius: 8, 
         borderBottomLeftRadius: 8, 
-        backgroundColor: '#0F0826', 
+        backgroundColor: '#081026', 
         borderWidth: 1.5, 
-        borderColor: 'rgba(217, 70, 239, 0.4)', 
+        borderColor: 'rgba(0, 212, 255, 0.4)', 
         justifyContent: 'center', 
         alignItems: 'center' 
     },
-    circleBtnActive: { backgroundColor: 'rgba(217, 70, 239, 0.25)', borderColor: '#D946EF', shadowColor: '#D946EF', shadowRadius: 8, shadowOpacity: 0.8, elevation: 6 },
+    circleBtnActive: { backgroundColor: 'rgba(0, 212, 255, 0.25)', borderColor: '#00D4FF', shadowColor: '#00D4FF', shadowRadius: 8, shadowOpacity: 0.8, elevation: 6 },
     
     section: { paddingHorizontal: 20, marginBottom: 28 },
     sectionLabel: { fontSize: scale(12), fontWeight: '900', color: '#00FF9D', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 14, marginLeft: 4 },
     seasonScroll: { marginBottom: 16 },
-    seasonTab: { paddingHorizontal: 16, paddingVertical: 8, borderTopLeftRadius: 14, borderBottomRightRadius: 14, borderTopRightRadius: 6, borderBottomLeftRadius: 6, backgroundColor: '#0F0826', marginRight: 10, borderWidth: 1.5, borderColor: 'rgba(217, 70, 239, 0.3)' },
-    seasonTabActive: { backgroundColor: '#D946EF', borderColor: '#D946EF', shadowColor: '#D946EF', shadowRadius: 6, shadowOpacity: 0.8, elevation: 4 },
+    seasonTab: { paddingHorizontal: 16, paddingVertical: 8, borderTopLeftRadius: 14, borderBottomRightRadius: 14, borderTopRightRadius: 6, borderBottomLeftRadius: 6, backgroundColor: '#081026', marginRight: 10, borderWidth: 1.5, borderColor: 'rgba(0, 212, 255, 0.3)' },
+    seasonTabActive: { backgroundColor: '#00D4FF', borderColor: '#00D4FF', shadowColor: '#00D4FF', shadowRadius: 6, shadowOpacity: 0.8, elevation: 4 },
     seasonTabText: { fontSize: scale(12), fontWeight: '700', color: 'rgba(255, 255, 255, 0.6)' },
     seasonTabTextActive: { color: '#FFFFFF', fontWeight: '900' },
     
@@ -423,22 +445,22 @@ const s = StyleSheet.create({
         backgroundColor: 'rgba(15, 8, 38, 0.5)', 
         borderRadius: 16, 
         borderWidth: 1, 
-        borderColor: 'rgba(217, 70, 239, 0.25)',
+        borderColor: 'rgba(0, 212, 255, 0.25)',
     },
     epThumbWrap: { 
         width: 115, 
         height: 65, 
         borderRadius: 12, 
         overflow: 'hidden', 
-        backgroundColor: '#050214', 
+        backgroundColor: '#030818', 
         position: 'relative', 
         borderWidth: 1, 
         borderColor: 'rgba(0, 255, 157, 0.3)',
     },
     epThumbImg: { width: '100%', height: '100%' },
-    epNumBadge: { position: 'absolute', top: 5, left: 5, backgroundColor: 'rgba(5, 2, 20, 0.85)', paddingHorizontal: 5, paddingVertical: 2, borderRadius: 6, borderWidth: 0.8, borderColor: '#00FF9D' },
+    epNumBadge: { position: 'absolute', top: 5, left: 5, backgroundColor: 'rgba(3, 8, 24, 0.85)', paddingHorizontal: 5, paddingVertical: 2, borderRadius: 6, borderWidth: 0.8, borderColor: '#00FF9D' },
     epNumBadgeText: { fontSize: scale(8.5), fontWeight: '900', color: '#00FF9D' },
-    epPlayOverlay: { position: 'absolute', top: '50%', left: '50%', marginTop: -13, marginLeft: -13, width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(217, 70, 239, 0.85)', justifyContent: 'center', alignItems: 'center', shadowColor: '#D946EF', shadowRadius: 4, shadowOpacity: 0.8, elevation: 3 },
+    epPlayOverlay: { position: 'absolute', top: '50%', left: '50%', marginTop: -13, marginLeft: -13, width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(0, 212, 255, 0.85)', justifyContent: 'center', alignItems: 'center', shadowColor: '#00D4FF', shadowRadius: 4, shadowOpacity: 0.8, elevation: 3 },
     epInfoWrap: { flex: 1, justifyContent: 'center' },
     epTitle: { fontSize: scale(13.5), fontWeight: '800', color: Colors.white, marginBottom: 3 },
     epDesc: { fontSize: scale(11), color: 'rgba(255, 255, 255, 0.65)', lineHeight: 15, marginBottom: 3 },
@@ -455,8 +477,8 @@ const s = StyleSheet.create({
         borderBottomLeftRadius: 8, 
         overflow: 'hidden', 
         borderWidth: 2, 
-        borderColor: '#D946EF',
-        backgroundColor: '#0F0826',
+        borderColor: '#00D4FF',
+        backgroundColor: '#081026',
     },
     actorImg: { width: '100%', height: '100%' },
     actorName: { fontSize: scale(11), fontWeight: '700', color: Colors.white, textAlign: 'center' },

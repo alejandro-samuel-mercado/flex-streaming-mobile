@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Home, Compass, Bookmark, User, Sparkles } from 'lucide-react-native';
+import { Home, Search, Bookmark, User, Sparkles } from 'lucide-react-native';
 import { Colors } from '../../theme/colors';
 import { View, StyleSheet, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,6 +8,24 @@ import { useCallback } from 'react';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { useFocusEffect } from 'expo-router';
 import { scale } from '../../lib/responsive';
+import { BottomTabBar } from '@react-navigation/bottom-tabs';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import { useNavVisibility } from '../../lib/nav-state';
+
+function AnimatedBottomTabBar(props: any) {
+    const navVisible = useNavVisibility();
+    const animatedStyle = useAnimatedStyle(() => {
+        return {
+            transform: [{ translateY: (1 - navVisible.value) * 130 }],
+            opacity: navVisible.value,
+        };
+    });
+    return (
+        <Animated.View style={[{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 999 }, animatedStyle]}>
+            <BottomTabBar {...props} />
+        </Animated.View>
+    );
+}
 
 export default function TabLayout() {
     const insets = useSafeAreaInsets();
@@ -28,6 +46,7 @@ export default function TabLayout() {
 
     return (
         <Tabs
+            tabBar={(props) => <AnimatedBottomTabBar {...props} />}
             screenOptions={{
                 headerShown: false,
                 tabBarStyle: [
@@ -70,7 +89,7 @@ export default function TabLayout() {
                         {/* Glowing top accent strip */}
                         <View style={styles.topAccentStrip}>
                             <LinearGradient
-                                colors={['transparent', '#00FF9D', '#D946EF', 'transparent']}
+                                colors={['transparent', '#00FF9D', '#00D4FF', 'transparent']}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
                                 style={StyleSheet.absoluteFillObject}
@@ -97,7 +116,7 @@ export default function TabLayout() {
                     tabBarIcon: ({ color, focused }) => (
                         <View style={[styles.iconContainer, focused && styles.activePod]}>
                             {focused && <View style={styles.activeGlowDot} />}
-                            <Compass size={focused ? 22 : 20} color={focused ? '#FFFFFF' : color} strokeWidth={focused ? 2.6 : 2} />
+                            <Search size={focused ? 22 : 20} color={focused ? '#FFFFFF' : color} strokeWidth={focused ? 2.6 : 2} />
                         </View>
                     ),
                 }}
@@ -147,7 +166,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'transparent',
         borderTopWidth: 0,
         elevation: 12,
-        shadowColor: '#D946EF',
+        shadowColor: '#00D4FF',
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.45,
         shadowRadius: 16,
@@ -160,7 +179,7 @@ const styles = StyleSheet.create({
         borderBottomLeftRadius: 16,
         overflow: 'hidden',
         borderWidth: 1.5,
-        borderColor: '#D946EF',
+        borderColor: '#00D4FF',
     },
     topAccentStrip: {
         position: 'absolute',
@@ -178,8 +197,8 @@ const styles = StyleSheet.create({
         borderRadius: 20,
     },
     activePod: {
-        backgroundColor: '#D946EF',
-        shadowColor: '#D946EF',
+        backgroundColor: '#00D4FF',
+        shadowColor: '#00D4FF',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.8,
         shadowRadius: 10,

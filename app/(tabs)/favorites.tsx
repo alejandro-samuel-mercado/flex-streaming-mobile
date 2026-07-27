@@ -11,6 +11,7 @@ import FilmCard from '../../components/catalog/FilmCard';
 import { FuturisticBackground } from '../../components/ui/FuturisticBackground';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { scale } from '../../lib/responsive';
+import { handleNavScroll } from '../../lib/nav-state';
 
 const { width: SW } = Dimensions.get('window');
 const COLS = 3;
@@ -116,6 +117,8 @@ export default function FavoritesScreen() {
                         columnWrapperStyle={{ gap: GAP }}
                         contentContainerStyle={{ paddingHorizontal: 16, gap: GAP, paddingBottom: bottomPadding }}
                         showsVerticalScrollIndicator={false}
+                        onScroll={handleNavScroll}
+                        scrollEventThrottle={16}
                         keyExtractor={(item) => item.id}
                         renderItem={({ item }) => {
                             const poster = resolveImageUrl(item.thumbnails?.find((t: any) => t.type === 'POSTER')?.url);

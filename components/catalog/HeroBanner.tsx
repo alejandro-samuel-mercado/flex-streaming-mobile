@@ -69,7 +69,7 @@ export default function HeroBanner({ slides }: { slides: HeroSlide[] }) {
 
                 {/* Extremely light bottom gradient only, so the portada is 100% visible and bright! */}
                 <LinearGradient 
-                    colors={['transparent', 'rgba(5, 2, 20, 0.4)', '#050214']} 
+                    colors={['transparent', 'rgba(3, 8, 24, 0.4)', '#030818']} 
                     locations={[0, 0.75, 1]} 
                     style={s.gradient} 
                 />
@@ -82,8 +82,8 @@ export default function HeroBanner({ slides }: { slides: HeroSlide[] }) {
                             onPress={() => router.push(`/film/${item.id}` as any)}
                             glow={item.hasVideo !== false}
                         >
-                            <Play size={20} fill={item.hasVideo === false ? 'rgba(255,255,255,0.4)' : '#050214'} color={item.hasVideo === false ? 'rgba(255,255,255,0.4)' : '#050214'} />
-                            <Text style={[s.playBtnText, item.hasVideo !== false && { color: '#050214', fontWeight: '900' }]}>
+                            <Play size={20} fill={item.hasVideo === false ? 'rgba(255,255,255,0.4)' : '#030818'} color={item.hasVideo === false ? 'rgba(255,255,255,0.4)' : '#030818'} />
+                            <Text style={[s.playBtnText, item.hasVideo !== false && { color: '#030818', fontWeight: '900' }]}>
                                 {item.hasVideo === false ? 'Próximamente' : 'Play'}
                             </Text>
                         </CyberButton>
@@ -159,10 +159,10 @@ function CyberButton({ children, onPress, style, glow = false }: { children: Rea
 }
 
 // Taller hero banner occupying full image height as requested (was 0.64, now 0.80)
-const HERO_H = SCREEN_HEIGHT * 0.85;
+const HERO_H = SCREEN_HEIGHT * 0.75;
 
 const s = StyleSheet.create({
-    container: { height: HERO_H, position: 'relative', backgroundColor: '#050214', marginBottom: scale(28) },
+    container: { height: HERO_H, position: 'relative', backgroundColor: '#030818', marginBottom: scale(28) },
     slide: { width: SCREEN_WIDTH, height: HERO_H },
     bgImage: { ...StyleSheet.absoluteFillObject },
     gradient: { ...StyleSheet.absoluteFillObject },
@@ -186,7 +186,7 @@ const s = StyleSheet.create({
     },
     typeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0, 255, 157, 0.04)', borderWidth: 0.8, borderColor: 'rgba(0, 255, 157, 0.25)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
     typeBadgeText: { fontSize: scale(9), fontWeight: '800', color: 'rgba(0, 255, 157, 0.75)', letterSpacing: 1, textTransform: 'uppercase' },
-    genreBadge: { backgroundColor: 'rgba(217, 70, 239, 0.04)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, borderWidth: 0.8, borderColor: 'rgba(217, 70, 239, 0.25)' },
+    genreBadge: { backgroundColor: 'rgba(0, 212, 255, 0.04)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, borderWidth: 0.8, borderColor: 'rgba(0, 212, 255, 0.25)' },
     genreBadgeText: { fontSize: scale(8.5), fontWeight: '700', color: 'rgba(255, 255, 255, 0.75)' },
     metaRow: { flexDirection: 'row', alignItems: 'center', gap: scale(8) },
     ratingBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(250, 204, 21, 0.04)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, borderWidth: 0.8, borderColor: 'rgba(250, 204, 21, 0.25)' },
@@ -208,7 +208,7 @@ const s = StyleSheet.create({
     playBtnText: { 
         fontSize: scale(13), 
         fontWeight: '900', 
-        color: '#050214', 
+        color: '#030818', 
         textTransform: 'uppercase', 
         letterSpacing: 1,
     },
@@ -216,11 +216,11 @@ const s = StyleSheet.create({
         width: 48, 
         height: 48, 
         borderRadius: 16, 
-        backgroundColor: 'rgba(217, 70, 239, 0.12)', 
+        backgroundColor: 'rgba(0, 212, 255, 0.12)', 
         justifyContent: 'center', 
         alignItems: 'center', 
         borderWidth: 1.2, 
-        borderColor: 'rgba(217, 70, 239, 0.45)' 
+        borderColor: 'rgba(0, 212, 255, 0.45)' 
     },
     dots: { position: 'absolute', bottom: 10, right: 16, flexDirection: 'row', gap: 5 },
     dot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: 'rgba(255, 255, 255, 0.3)' },

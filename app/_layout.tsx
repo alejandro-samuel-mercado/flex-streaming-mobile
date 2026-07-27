@@ -19,7 +19,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (loading) return;
 
-    const inAuthGroup = segments[0] === '(auth)' || segments.includes('login') || pathname?.includes('login');
+    const inAuthGroup = segments[0] === '(auth)' || (segments as string[]).includes('login') || pathname?.includes('login');
 
     if (!user && !inAuthGroup) {
       router.replace('/(auth)/login' as any);
@@ -31,12 +31,12 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: Colors.bg, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#D946EF" />
+        <ActivityIndicator size="large" color="#00D4FF" />
       </View>
     );
   }
 
-  const inAuthGroup = segments[0] === '(auth)' || segments.includes('login') || pathname?.includes('login');
+  const inAuthGroup = segments[0] === '(auth)' || (segments as string[]).includes('login') || pathname?.includes('login');
   if (!user && !inAuthGroup) {
     return <View style={{ flex: 1, backgroundColor: Colors.bg }} />;
   }

@@ -10,6 +10,7 @@ import { fetchApi } from '../../lib/api-client';
 import { API_ROUTES, resolveImageUrl } from '../../lib/api-routes';
 import { scale, UI_SPACING } from '../../lib/responsive';
 import { Storage, StorageKeys } from '../../lib/storage';
+import { handleNavScroll } from '../../lib/nav-state';
 import { Colors } from '../../theme/colors';
 
 function mapContentToFilm(c: any) {
@@ -105,7 +106,7 @@ export default function MyNubaScreen() {
                 <View style={s.headerLeft}>
                     <View style={s.badge}>
                         <Bookmark size={16} color="#00FF9D" />
-                        <Text style={s.headerTitle}>MI <Text style={{ color: '#D946EF' }}>NUBA</Text></Text>
+                        <Text style={s.headerTitle}>MI <Text style={{ color: '#00D4FF' }}>NUBA</Text></Text>
                     </View>
                 </View>
                 <View style={s.statusPill}>
@@ -118,8 +119,10 @@ export default function MyNubaScreen() {
                 style={s.screen}
                 contentContainerStyle={[s.content, { paddingBottom: bottomPadding }]}
                 showsVerticalScrollIndicator={false}
+                onScroll={handleNavScroll}
+                scrollEventThrottle={16}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#D946EF" colors={['#D946EF', '#00FF9D']} />
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00D4FF" colors={['#00D4FF', '#00FF9D']} />
                 }
             >
                 {history.length > 0 ? (
@@ -133,10 +136,10 @@ export default function MyNubaScreen() {
                 )}
 
                 {favorites.length > 0 ? (
-                    <FilmRow title="Mi lista" subtitle="Títulos guardados en favoritos" items={favorites} variant="large" accentColor="#D946EF" />
+                    <FilmRow title="Mi lista" subtitle="Títulos guardados en favoritos" items={favorites} variant="large" accentColor="#00D4FF" />
                 ) : (
                     <View style={[s.emptyBox, { marginTop: 20 }]}>
-                        <Heart size={28} color="rgba(217, 70, 239, 0.6)" />
+                        <Heart size={28} color="rgba(0, 212, 255, 0.6)" />
                         <Text style={s.emptyTitle}>Tu lista está vacía</Text>
                         <Text style={s.emptySub}>Explora nuestro catálogo y presiona el ícono (+) o corazón en tus películas y series favoritas para guardarlas.</Text>
                     </View>
@@ -156,9 +159,9 @@ const s = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 16,
         paddingBottom: 14,
-        backgroundColor: 'rgba(5, 2, 20, 0.8)',
+        backgroundColor: 'rgba(3, 8, 24, 0.8)',
         borderBottomWidth: 1.5,
-        borderBottomColor: 'rgba(217, 70, 239, 0.3)',
+        borderBottomColor: 'rgba(0, 212, 255, 0.3)',
         zIndex: 10,
     },
     headerLeft: { flexDirection: 'row', alignItems: 'center' },

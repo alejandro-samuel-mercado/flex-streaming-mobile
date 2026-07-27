@@ -3,24 +3,24 @@
  * Breathtaking Neon Fuschia, Cyber Mint & Deep Electric Violet.
  */
 export const Colors = {
-  // Backgrounds - Deep Cyber Violet / Dark Space
-  bg: '#050214',
-  bgDark: '#02010A',
-  bgCard: '#0F0826',
-  bgCardLight: 'rgba(24, 12, 56, 0.82)',
-  bgOverlay: 'rgba(5, 2, 20, 0.75)',
+  // Backgrounds - Deep Ocean Cyber Blue / Dark Space
+  bg: '#030818',
+  bgDark: '#01040D',
+  bgCard: '#081026',
+  bgCardLight: 'rgba(8, 16, 38, 0.82)',
+  bgOverlay: 'rgba(3, 8, 24, 0.75)',
 
-  // Primary — Neon Cyber Magenta / Fuschia
-  primary: '#D946EF',
-  primaryDark: '#A21CAF',
-  primaryGlow: 'rgba(217, 70, 239, 0.28)',
-  primaryBorder: 'rgba(217, 70, 239, 0.45)',
-  primarySoft: '#F0ABFC',
+  // Primary — Electric Cyber Cyan / Sky Blue
+  primary: '#00D4FF',
+  primaryDark: '#0077FF',
+  primaryGlow: 'rgba(0, 212, 255, 0.28)',
+  primaryBorder: 'rgba(0, 212, 255, 0.45)',
+  primarySoft: '#80E5FF',
 
   // Accent — Electric Cyber Mint / Cyan
   accent: '#00FF9D',
-  accentPink: '#FF007F',
-  accentGradient: ['#D946EF', '#00FF9D'] as const,
+  accentPink: '#0088FF',
+  accentGradient: ['#00D4FF', '#00FF9D'] as const,
 
   // Text
   white: '#FFFFFF',
@@ -44,9 +44,9 @@ export const Colors = {
   error: '#FF3366',
   errorSoft: '#FF80A0',
   warning: '#F59E0B',
-  purple: '#8B5CF6',
-  purpleBg: 'rgba(139, 92, 246, 0.15)',
-  purpleBorder: 'rgba(139, 92, 246, 0.35)',
+  purple: '#0077FF',
+  purpleBg: 'rgba(0, 119, 255, 0.15)',
+  purpleBorder: 'rgba(0, 119, 255, 0.35)',
 
   // Misc
   black: '#000000',

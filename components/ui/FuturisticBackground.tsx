@@ -105,7 +105,7 @@ export const FuturisticBackground: React.FC<FuturisticBackgroundProps> = ({
         <View style={[styles.container, style]}>
             {/* Base Deep Violet Cyber Space */}
             <LinearGradient
-                colors={['#050214', '#0D0528', '#03010A']}
+                colors={['#030818', '#0D0528', '#03010A']}
                 locations={[0, 0.45, 1]}
                 style={StyleSheet.absoluteFillObject}
             />
@@ -114,7 +114,7 @@ export const FuturisticBackground: React.FC<FuturisticBackgroundProps> = ({
             {showOrbs && (
                 <Animated.View style={[styles.waveBeam, waveStyle]}>
                     <LinearGradient
-                        colors={['transparent', 'rgba(217, 70, 239, 0.12)', 'rgba(0, 255, 157, 0.08)', 'transparent']}
+                        colors={['transparent', 'rgba(0, 212, 255, 0.12)', 'rgba(0, 255, 157, 0.08)', 'transparent']}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                         style={StyleSheet.absoluteFillObject}
@@ -128,7 +128,7 @@ export const FuturisticBackground: React.FC<FuturisticBackgroundProps> = ({
                     {/* Top Right Neon Magenta Glow */}
                     <Animated.View style={[styles.orb, styles.orbTopRight, orb1Style]}>
                         <LinearGradient
-                            colors={['rgba(217, 70, 239, 0.35)', 'rgba(217, 70, 239, 0.06)', 'transparent']}
+                            colors={['rgba(0, 212, 255, 0.35)', 'rgba(0, 212, 255, 0.06)', 'transparent']}
                             style={StyleSheet.absoluteFillObject}
                         />
                     </Animated.View>
@@ -145,10 +145,10 @@ export const FuturisticBackground: React.FC<FuturisticBackgroundProps> = ({
 
             {/* Futuristic Star / Cyber Particle Specks */}
             <View style={styles.particlesContainer} pointerEvents="none">
-                <View style={[styles.particle, { top: '12%', left: '18%', width: 4, height: 4, backgroundColor: '#D946EF', shadowColor: '#D946EF' }]} />
+                <View style={[styles.particle, { top: '12%', left: '18%', width: 4, height: 4, backgroundColor: '#00D4FF', shadowColor: '#00D4FF' }]} />
                 <View style={[styles.particle, { top: '22%', right: '12%', width: 3, height: 3, backgroundColor: '#00FF9D', shadowColor: '#00FF9D', opacity: 0.8 }]} />
-                <View style={[styles.particle, { top: '38%', left: '8%', width: 2.5, height: 2.5, backgroundColor: '#F0ABFC', opacity: 0.6 }]} />
-                <View style={[styles.particle, { top: '55%', right: '22%', width: 3.5, height: 3.5, backgroundColor: '#D946EF', shadowColor: '#D946EF', opacity: 0.75 }]} />
+                <View style={[styles.particle, { top: '38%', left: '8%', width: 2.5, height: 2.5, backgroundColor: '#80E5FF', opacity: 0.6 }]} />
+                <View style={[styles.particle, { top: '55%', right: '22%', width: 3.5, height: 3.5, backgroundColor: '#00D4FF', shadowColor: '#00D4FF', opacity: 0.75 }]} />
                 <View style={[styles.particle, { top: '75%', left: '25%', width: 3, height: 3, backgroundColor: '#00FF9D', shadowColor: '#00FF9D', opacity: 0.7 }]} />
                 <View style={[styles.particle, { top: '88%', right: '18%', width: 2, height: 2, backgroundColor: '#FFFFFF', opacity: 0.5 }]} />
             </View>

@@ -6,7 +6,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { StatusBar } from 'expo-status-bar';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { AlertCircle, ArrowLeft, Check, Clock, Languages, List, Lock, Maximize, MessageSquare, Minimize, Pause, Play, RotateCcw, RotateCw, Settings, SkipBack, SkipForward, Smartphone, Unlock, Volume2, VolumeX, X } from 'lucide-react-native';
+import { AlertCircle, ArrowLeft, Check, ChevronDown, ChevronRight, Clock, Languages, List, Lock, Maximize, MessageSquare, Minimize, Pause, Play, RotateCcw, RotateCw, Settings, SkipBack, SkipForward, Smartphone, Unlock, Volume2, VolumeX, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -32,12 +32,10 @@ const NobaVideoPlayer = React.memo(({
 }: any) => {
     const player = useVideoPlayer(streamSrc, player => {
         player.play();
-        // Buffer agresivo: fuerza al player a pre-cargar 90 segundos hacia adelante.
-        // En dispositivos de gama baja o con redes móviles inestables, un buffer mayor
-        // evita que el video se pause mientras descarga los siguientes segmentos.
-        // HLS segments = 6s; 90s = 15 segmentos en buffer = muy tolerante a cortes de red.
+        // Búfer optimizado (20s): suficiente para soportar oscilaciones de red
+        // y cortes en móvil, sin agotar la RAM ni disparar el Garbage Collector en Android.
         player.bufferOptions = {
-            preferredForwardBufferDuration: 90,   // iOS + Android: buffer 90s por adelantado
+            preferredForwardBufferDuration: 20,    // iOS + Android: buffer 20s por adelantado
             waitsToMinimizeStalling: true,         // iOS: espera buffer saludable antes de arrancar
         };
     });
@@ -278,6 +276,32 @@ export default function WatchScreen() {
         if (!content?.seasons) return [];
         return content.seasons.flatMap((s: any) => (s.episodes || []).map((e: any) => ({ ...e, seasonNumber: s.number })));
     }, [content?.seasons]);
+
+    const sidebarScrollRef = useRef<ScrollView>(null);
+
+    const seasonsWithEpisodes = useMemo(() => {
+        if (!content?.seasons) return [];
+        return content.seasons.map((s: any) => ({
+            ...s,
+            episodes: (s.episodes || []).map((e: any) => ({ ...e, seasonNumber: s.number }))
+        }));
+    }, [content?.seasons]);
+
+    const activeEpId = currentEpisode?.id || episodeId;
+
+    const [expandedSeasons, setExpandedSeasons] = useState<Record<number, boolean>>({});
+
+    useEffect(() => {
+        if (activeMenu === 'episodes') {
+            const currentEpObj = allEpisodes.find((e: any) => String(e.id) === String(activeEpId));
+            const sNum = currentEpObj?.seasonNumber || content?.seasons?.[0]?.number || 1;
+            setExpandedSeasons(prev => ({ ...prev, [sNum]: true }));
+        }
+    }, [activeMenu, allEpisodes, activeEpId, content]);
+
+    const toggleSeason = useCallback((sNum: number) => {
+        setExpandedSeasons(prev => ({ ...prev, [sNum]: !prev[sNum] }));
+    }, []);
 
     const currentIdx = useMemo(() => {
         if (!currentEpisode) return -1;
@@ -859,7 +883,7 @@ export default function WatchScreen() {
                         paddingLeft: activeMenu === 'episodes' ? 20 : 20
                     }
                 ]}>
-                    <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
+                    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(8, 12, 20, 0.96)' }]} />
                     <View style={s.sidebarHeader}>
                         <Text style={s.sidebarTitle}>
                             {activeMenu === 'episodes' ? 'Episodios' :
@@ -871,27 +895,77 @@ export default function WatchScreen() {
 
                     <View style={{ flex: 1 }}>
                         {activeMenu === 'episodes' && (
-                            <FlatList
-                                data={content.seasons?.flatMap((s: any) => s.episodes?.map((e: any) => ({ ...e, seasonNumber: s.number })) || [])}
-                                keyExtractor={(item) => item.id}
-                                style={{ flex: 1 }}
-                                initialNumToRender={15}
-                                maxToRenderPerBatch={10}
-                                windowSize={5}
-                                removeClippedSubviews={true}
-                                renderItem={({ item: ep }) => (
-                                    <TouchableOpacity
-                                        style={[s.epItem, episodeId === ep.id && s.epItemActive]}
-                                        onPress={() => { setActiveMenu(null); router.replace(`/watch/${id}?episodeId=${ep.id}` as any); }}
-                                    >
-                                        <View style={s.epNum}><Text style={s.epNumText}>{ep.number}</Text></View>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={s.epName} numberOfLines={1}>{ep.translations?.[0]?.title || `Episodio ${ep.number}`}</Text>
-                                            <Text style={{ color: Colors.textMuted, fontSize: 11 }}>Temporada {ep.seasonNumber}</Text>
+                            <ScrollView ref={sidebarScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+                                {seasonsWithEpisodes.map((se: any, sIdx: number) => {
+                                    const isExpanded = !!expandedSeasons[se.number];
+                                    const isCurrentSeason = se.episodes.some((e: any) => String(e.id) === String(activeEpId));
+                                    return (
+                                        <View key={se.id || sIdx} style={{ marginBottom: 6 }}>
+                                            {/* Season Header */}
+                                            <TouchableOpacity
+                                                onPress={() => toggleSeason(se.number)}
+                                                style={[s.seasonHeader, isCurrentSeason && s.seasonHeaderCurrent]}
+                                                activeOpacity={0.8}
+                                            >
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                                    {isExpanded ? (
+                                                        <ChevronDown size={18} color={Colors.white} />
+                                                    ) : (
+                                                        <ChevronRight size={18} color={Colors.white} />
+                                                    )}
+                                                    <Text style={s.seasonTitle}>
+                                                        Temporada {se.number}
+                                                    </Text>
+                                                </View>
+                                                <Text style={s.seasonCount}>
+                                                    {se.episodes.length} ep.
+                                                </Text>
+                                            </TouchableOpacity>
+
+                                            {/* Expanded Episodes with Indentation */}
+                                            {isExpanded && (
+                                                <View style={s.episodesContainer}>
+                                                    {se.episodes.map((ep: any, epIdx: number) => {
+                                                        const isCurrentEp = String(activeEpId) === String(ep.id);
+                                                        return (
+                                                            <TouchableOpacity
+                                                                key={ep.id || epIdx}
+                                                                onLayout={isCurrentEp ? (e: any) => {
+                                                                    if (sidebarScrollRef.current) {
+                                                                        const y = e.nativeEvent.layout.y;
+                                                                        const offset = Math.max(0, (sIdx * 60) + y - 100);
+                                                                        sidebarScrollRef.current.scrollTo({ y: offset, animated: false });
+                                                                    }
+                                                                } : undefined}
+                                                                onPress={() => { setActiveMenu(null); router.replace(`/watch/${id}?episodeId=${ep.id}` as any); }}
+                                                                style={[s.epItem, isCurrentEp && s.epItemActive]}
+                                                                activeOpacity={0.8}
+                                                            >
+                                                                <View style={[s.epNum, isCurrentEp && s.epNumActive]}>
+                                                                    <Text style={[s.epNumText, isCurrentEp && { color: Colors.black }]}>{ep.number ?? ''}</Text>
+                                                                </View>
+                                                                <View style={{ flex: 1 }}>
+                                                                    <Text style={[s.epName, isCurrentEp && { color: Colors.primary }]} numberOfLines={1}>
+                                                                        {ep.translations?.[0]?.title || `Episodio ${ep.number ?? ''}`}
+                                                                    </Text>
+                                                                    <Text style={{ color: Colors.textMuted, fontSize: 11 }}>
+                                                                        {ep.durationSeconds ? `${Math.round(ep.durationSeconds / 60)} min` : `Temporada ${se.number}`}
+                                                                    </Text>
+                                                                </View>
+                                                                {isCurrentEp && (
+                                                                    <View style={s.playingBadge}>
+                                                                        <Text style={s.playingText}>Viendo</Text>
+                                                                    </View>
+                                                                )}
+                                                            </TouchableOpacity>
+                                                        );
+                                                    })}
+                                                </View>
+                                            )}
                                         </View>
-                                    </TouchableOpacity>
-                                )}
-                            />
+                                    );
+                                })}
+                            </ScrollView>
                         )}
 
                         {activeMenu !== 'episodes' && (
@@ -1063,10 +1137,18 @@ const s = StyleSheet.create({
     settingsMenu: { position: 'absolute', right: 20, top: '15%', bottom: '15%', width: 280, zIndex: 200, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 20 },
     sidebarHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
     sidebarTitle: { fontSize: 20, fontWeight: '900', color: Colors.white, textTransform: 'uppercase' },
+    seasonHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', marginBottom: 6 },
+    seasonHeaderCurrent: { borderColor: 'rgba(0, 229, 255, 0.4)', backgroundColor: 'rgba(0, 229, 255, 0.12)' },
+    seasonTitle: { fontSize: 15, fontWeight: '800', color: Colors.white },
+    seasonCount: { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.6)', backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+    episodesContainer: { marginLeft: 14, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: 'rgba(255,255,255,0.15)', gap: 6, marginTop: 4, marginBottom: 8 },
+    playingBadge: { backgroundColor: Colors.primary, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+    playingText: { fontSize: 10, fontWeight: '900', color: Colors.black, textTransform: 'uppercase' },
     seasonLabel: { fontSize: 11, fontWeight: '900', color: Colors.primary, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(0,229,255,0.2)', paddingBottom: 6 },
     epItem: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', marginBottom: 8 },
-    epItemActive: { backgroundColor: 'rgba(0,229,255,0.1)', borderColor: 'rgba(0,229,255,0.3)' },
+    epItemActive: { backgroundColor: 'rgba(0,229,255,0.15)', borderColor: 'rgba(0,229,255,0.5)' },
     epNum: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
+    epNumActive: { backgroundColor: Colors.primary },
     epNumText: { fontSize: 13, fontWeight: '900', color: Colors.white },
     epName: { flex: 1, fontSize: 14, fontWeight: '700', color: Colors.white },
     menuItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', marginBottom: 8 },

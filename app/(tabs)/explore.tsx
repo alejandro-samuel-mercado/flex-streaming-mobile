@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ListFilter, Search, X, Zap } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Dimensions, FlatList, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -8,6 +8,7 @@ import { FuturisticBackground } from '../../components/ui/FuturisticBackground';
 import { fetchApi } from '../../lib/api-client';
 import { API_ROUTES, resolveImageUrl } from '../../lib/api-routes';
 import { CONTENT_TYPES_LIST, getContentTypeLabel } from '../../lib/content-types';
+import { handleNavScroll } from '../../lib/nav-state';
 import { isTV, scale, UI_SPACING } from '../../lib/responsive';
 import { Colors } from '../../theme/colors';
 
@@ -18,13 +19,33 @@ const CARD_W = Math.floor((SW - (UI_SPACING.horizontal * 2) - (GAP * (COLS - 1))
 
 export default function ExploreScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
-  const [type, setType] = useState<string | null>(null);
-  const [genreId, setGenreId] = useState<string | null>(null);
-  const [platformId, setPlatformId] = useState<string | null>(null);
+  const [type, setType] = useState<string | null>((params.type as string) || null);
+  const [genreId, setGenreId] = useState<string | null>((params.genreId as string) || null);
+  const [platformId, setPlatformId] = useState<string | null>((params.platformId as string) || null);
   const [genres, setGenres] = useState<any[]>([]);
   const [platforms, setPlatforms] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (params.type !== undefined) {
+      setType((params.type as string) || null);
+    }
+    if (params.genreId !== undefined) {
+      setGenreId((params.genreId as string) || null);
+    }
+    if (params.platformId !== undefined) {
+      setPlatformId((params.platformId as string) || null);
+    } else if (params.platform && platforms.length > 0) {
+      const slug = (params.platform as string).toLowerCase();
+      const found = platforms.find((p: any) => p.slug?.toLowerCase() === slug || p.name?.toLowerCase() === slug || p.id?.toLowerCase() === slug);
+      if (found) setPlatformId(found.id);
+    }
+    if (params.type !== undefined || params.genreId !== undefined || params.platformId !== undefined || params.platform !== undefined) {
+      setPage(1);
+    }
+  }, [params.type, params.genreId, params.platformId, params.platform, platforms]);
   
   const [content, setContent] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,8 +78,26 @@ export default function ExploreScreen() {
       try {
         const p = new URLSearchParams({ page: String(page), limit: '30' });
         if (search) p.append('search', search);
-        if (type) p.set('type', type);
-        if (genreId) p.set('genreId', genreId);
+
+        let effectiveType = type;
+        let effectiveGenreId = genreId;
+
+        if (type === 'KIDS' || type === 'Infantil') {
+          effectiveType = null;
+          if (!effectiveGenreId) {
+            const familiaGenre = genres.find((g: any) => g.name?.toLowerCase() === 'familia' || g.label?.toLowerCase() === 'familia' || g.name?.toLowerCase() === 'infantil' || g.label?.toLowerCase() === 'infantil' || g.name?.toLowerCase() === 'kids' || g.label?.toLowerCase() === 'kids');
+            if (familiaGenre) effectiveGenreId = familiaGenre.id || familiaGenre.value;
+          }
+        } else if (type === 'KDRAMA' || type === 'K-Dramas') {
+          effectiveType = null;
+          if (!effectiveGenreId) {
+            const dramaGenre = genres.find((g: any) => g.name?.toLowerCase() === 'drama' || g.label?.toLowerCase() === 'drama');
+            if (dramaGenre) effectiveGenreId = dramaGenre.id || dramaGenre.value;
+          }
+        }
+
+        if (effectiveType) p.set('type', effectiveType);
+        if (effectiveGenreId) p.set('genreId', effectiveGenreId);
         if (platformId) p.set('platformId', platformId);
         
         const json = await fetchApi<any>(`${API_ROUTES.CONTENT.LIST}?${p}`);
@@ -76,7 +115,7 @@ export default function ExploreScreen() {
     const delay = page === 1 ? 250 : 0;
     const t = setTimeout(load, delay);
     return () => clearTimeout(t);
-  }, [page, search, type, genreId, platformId]);
+  }, [page, search, type, genreId, platformId, genres]);
 
   const renderItem = useCallback(({ item }: any) => {
     const poster = resolveImageUrl(item.thumbnails?.find((t: any) => t.type === 'POSTER')?.url);
@@ -105,7 +144,7 @@ export default function ExploreScreen() {
         {/* Search Bar & Filter Button (Optimized static view without Blur for max FPS) */}
         <View style={s.searchBarContainer}>
           <View style={s.searchPod}>
-            <Search color="#D946EF" size={20} />
+            <Search color="#00D4FF" size={20} />
             <TextInput
               style={s.searchInput}
               placeholder="Buscar en el hiperespacio..."
@@ -126,9 +165,55 @@ export default function ExploreScreen() {
             onPress={() => setShowFilters(true)}
             activeOpacity={0.8}
           >
-            <ListFilter color={(!!type || !!genreId || !!platformId) ? '#050214' : '#00FF9D'} size={22} />
+            <ListFilter color={(!!type || !!genreId || !!platformId) ? '#030818' : '#00FF9D'} size={22} />
           </TouchableOpacity>
         </View>
+
+        {/* Active Filters Bar */}
+        {(!!type || !!genreId || !!platformId) && (
+          <View style={s.activeFiltersContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.activeFiltersScroll}>
+              {!!type && (
+                <TouchableOpacity style={s.activeFilterChip} onPress={() => { setType(null); setPage(1); }}>
+                  <Text style={s.activeFilterText}>
+                    Tipo: {type === 'KIDS' ? 'Kids' : type === 'KDRAMA' ? 'K-Dramas' : getContentTypeLabel(type)}
+                  </Text>
+                  <X size={14} color="#030818" />
+                </TouchableOpacity>
+              )}
+              {!!genreId && (
+                <TouchableOpacity style={s.activeFilterChip} onPress={() => { setGenreId(null); setPage(1); }}>
+                  <Text style={s.activeFilterText}>
+                    Género: {genres.find((g: any) => g.id === genreId || g.value === genreId)?.name || genres.find((g: any) => g.id === genreId || g.value === genreId)?.label || 'Sector'}
+                  </Text>
+                  <X size={14} color="#030818" />
+                </TouchableOpacity>
+              )}
+              {!!platformId && (
+                <TouchableOpacity style={s.activeFilterChip} onPress={() => { setPlatformId(null); setPage(1); }}>
+                  <Text style={s.activeFilterText}>
+                    Plataforma: {platforms.find((p: any) => p.id === platformId || p.value === platformId)?.name || 'Red'}
+                  </Text>
+                  <X size={14} color="#030818" />
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                style={s.clearAllBtn}
+                onPress={() => {
+                  setType(null);
+                  setGenreId(null);
+                  setPlatformId(null);
+                  setSearch('');
+                  setPage(1);
+                  router.setParams({ type: '', genreId: '', platformId: '', platform: '' });
+                }}
+              >
+                <Text style={s.clearAllText}>Limpiar todo</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        )}
 
         {/* Filter Native Modal */}
         <Modal transparent visible={showFilters} animationType="fade" onRequestClose={() => setShowFilters(false)}>
@@ -212,8 +297,8 @@ export default function ExploreScreen() {
         {/* Content Grid */}
         {loading ? (
           <View style={s.loaderContainer}>
-            <ActivityIndicator size="large" color="#D946EF" />
-            <Text style={s.loaderText}>RASTREANDO MATRIZ...</Text>
+            <ActivityIndicator size="large" color="#00D4FF" />
+            <Text style={s.loaderText}>Cargando..</Text>
           </View>
         ) : (
           <FlatList
@@ -224,6 +309,8 @@ export default function ExploreScreen() {
             columnWrapperStyle={{ gap: GAP }}
             contentContainerStyle={{ paddingHorizontal: UI_SPACING.horizontal, paddingTop: 8, gap: GAP, paddingBottom: bottomPadding }}
             showsVerticalScrollIndicator={false}
+            onScroll={handleNavScroll}
+            scrollEventThrottle={16}
             initialNumToRender={12}
             maxToRenderPerBatch={12}
             windowSize={5}
@@ -295,13 +382,13 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     paddingHorizontal: 16,
-    backgroundColor: '#0F0826',
+    backgroundColor: '#081026',
     borderTopLeftRadius: 26,
     borderBottomRightRadius: 26,
     borderTopRightRadius: 10,
     borderBottomLeftRadius: 10,
     borderWidth: 1.5,
-    borderColor: '#D946EF',
+    borderColor: '#00D4FF',
   },
   searchInput: { flex: 1, color: '#FFFFFF', fontSize: scale(15), fontWeight: '700' },
   clearIcon: { padding: 4 },
@@ -312,7 +399,7 @@ const s = StyleSheet.create({
     borderBottomRightRadius: 20,
     borderTopRightRadius: 8,
     borderBottomLeftRadius: 8, 
-    backgroundColor: '#0F0826', 
+    backgroundColor: '#081026', 
     borderWidth: 1.5, 
     borderColor: '#00FF9D', 
     justifyContent: 'center', 
@@ -327,19 +414,55 @@ const s = StyleSheet.create({
     elevation: 8,
   },
   
-  modalOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(5, 2, 20, 0.9)', justifyContent: 'center', alignItems: 'center', padding: 16, zIndex: 1000 },
+  activeFiltersContainer: {
+    marginBottom: scale(14),
+  },
+  activeFiltersScroll: {
+    paddingHorizontal: UI_SPACING.horizontal,
+    gap: 8,
+    alignItems: 'center',
+  },
+  activeFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#00FF9D',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  activeFilterText: {
+    color: '#030818',
+    fontSize: scale(12),
+    fontWeight: '800',
+  },
+  clearAllBtn: {
+    backgroundColor: 'rgba(255, 51, 102, 0.15)',
+    borderWidth: 1,
+    borderColor: '#FF3366',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  clearAllText: {
+    color: '#FF3366',
+    fontSize: scale(12),
+    fontWeight: '800',
+  },
+
+  modalOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(3, 8, 24, 0.9)', justifyContent: 'center', alignItems: 'center', padding: 16, zIndex: 1000 },
   modalBox: {
     width: '94%',
     maxHeight: '85%',
-    backgroundColor: '#0F0826',
+    backgroundColor: '#081026',
     borderTopLeftRadius: 36,
     borderBottomRightRadius: 36,
     borderTopRightRadius: 16,
     borderBottomLeftRadius: 16,
     borderWidth: 2,
-    borderColor: '#D946EF',
+    borderColor: '#00D4FF',
     padding: 24,
-    shadowColor: '#D946EF',
+    shadowColor: '#00D4FF',
     shadowRadius: 20,
     shadowOpacity: 0.5,
     elevation: 10,
@@ -361,13 +484,13 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   filterChipInactive: {
-    backgroundColor: 'rgba(24, 12, 56, 0.8)',
-    borderColor: 'rgba(217, 70, 239, 0.3)',
+    backgroundColor: 'rgba(8, 16, 38, 0.8)',
+    borderColor: 'rgba(0, 212, 255, 0.3)',
   },
   filterChipActive: {
-    backgroundColor: '#D946EF',
-    borderColor: '#D946EF',
-    shadowColor: '#D946EF',
+    backgroundColor: '#00D4FF',
+    borderColor: '#00D4FF',
+    shadowColor: '#00D4FF',
     shadowRadius: 8,
     shadowOpacity: 0.8,
     elevation: 4,
@@ -379,5 +502,5 @@ const s = StyleSheet.create({
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80 },
   emptyText: { color: 'rgba(255, 255, 255, 0.5)', fontSize: scale(16), fontWeight: '700' },
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80, gap: 12 },
-  loaderText: { color: '#D946EF', fontWeight: '800', letterSpacing: 1.5 },
+  loaderText: { color: '#00D4FF', fontWeight: '800', letterSpacing: 1.5 },
 });
