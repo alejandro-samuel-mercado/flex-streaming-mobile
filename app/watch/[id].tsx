@@ -35,7 +35,7 @@ const NobaVideoPlayer = React.memo(({
         // Búfer optimizado (20s): suficiente para soportar oscilaciones de red
         // y cortes en móvil, sin agotar la RAM ni disparar el Garbage Collector en Android.
         player.bufferOptions = {
-            preferredForwardBufferDuration: 20,    // iOS + Android: buffer 20s por adelantado
+            preferredForwardBufferDuration: 120,    // iOS + Android: aumentamos el buffer a 120s para prevenir cortes
             waitsToMinimizeStalling: true,         // iOS: espera buffer saludable antes de arrancar
         };
     });
