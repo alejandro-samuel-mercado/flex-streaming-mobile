@@ -41,14 +41,40 @@ const NobaVideoPlayer = React.memo(({
             ref={videoRef}
             source={streamSrc ? { uri: streamSrc } : undefined}
             style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000' }]}
-            resizeMode={resizeMode === 'contain' ? ResizeMode.CONTAIN : ResizeMode.COVER}
-            onPlaybackStatusUpdate={onStatus}
-            progressUpdateIntervalMillis={1000}
-            useNativeControls={false}
-            onLoad={onLoad}
-            isMuted={isMuted}
-            shouldPlay={shouldPlay}
-            shouldCorrectPitch={false}
+            resizeMode={resizeMode}
+            paused={!shouldPlay}
+            muted={isMuted}
+            useTextureView={false}
+            selectedAudioTrack={{ type: "default" }}
+            bufferConfig={{
+                minBufferMs: 30000,
+                maxBufferMs: 120000,
+                bufferForPlaybackMs: 5000,
+                bufferForPlaybackAfterRebufferMs: 10000
+            }}
+            onProgress={(data: any) => {
+                onStatus({
+                    isLoaded: true,
+                    positionMillis: data.currentTime * 1000,
+                    durationMillis: data.seekableDuration * 1000,
+                    isPlaying: shouldPlay
+                });
+            }}
+            onBuffer={({ isBuffering }: any) => {
+                onStatus({ isLoaded: true, isBuffering, isPlaying: shouldPlay });
+            }}
+            onEnd={() => {
+                onStatus({ isLoaded: true, didJustFinish: true });
+            }}
+            onError={(err: any) => {
+                console.error("RNVideo error:", err);
+                onPlayerError?.('network_blip');
+                setError("Error de reproducción. Reintentando...");
+            }}
+            onLoad={(data: any) => {
+                onStatus({ isLoaded: true, durationMillis: data.duration * 1000, positionMillis: 0, isPlaying: shouldPlay });
+                if (onLoad) onLoad(data);
+            }}
         />
     );
 }, (prev: any, next: any) => prev.resizeMode === next.resizeMode && prev.streamSrc === next.streamSrc && prev.shouldPlay === next.shouldPlay && prev.isMuted === next.isMuted && prev.width === next.width && prev.height === next.height);
