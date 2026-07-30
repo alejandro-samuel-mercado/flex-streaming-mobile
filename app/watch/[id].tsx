@@ -45,7 +45,6 @@ const NobaVideoPlayer = React.memo(({
             paused={!shouldPlay}
             muted={isMuted}
             useTextureView={false}
-            selectedAudioTrack={{ type: "default" }}
             bufferConfig={{
                 minBufferMs: 30000,
                 maxBufferMs: 120000,
