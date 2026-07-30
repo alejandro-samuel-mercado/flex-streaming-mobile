@@ -448,11 +448,21 @@ export default function WatchScreen() {
     }, []);
 
     useEffect(() => {
+        // Reset local refs when movie/episode changes
+        positionRef.current = 0;
+        durationRef.current = 0;
+
+        if (progressTimer.current) clearInterval(progressTimer.current);
+
         progressTimer.current = setInterval(async () => {
             if (!content || durationRef.current === 0) return;
             
             const currentProgress = Math.floor(positionRef.current / 1000);
             const currentDuration = Math.floor(durationRef.current / 1000);
+
+            // Evitar guardar progreso si es menos de 30 segundos (evita falsos positivos al entrar)
+            // o si ya casi termina la película.
+            if (currentProgress < 30 || (currentDuration > 0 && currentProgress > currentDuration * 0.95)) return;
 
             try {
                 await fetchApi(API_ROUTES.HISTORY.PROGRESS, {
@@ -466,10 +476,10 @@ export default function WatchScreen() {
                 });
             } catch (e) { }
 
-        }, 10000);
+        }, 15000); // Save every 15s instead of 10s to reduce DB load
+        
         return () => { if (progressTimer.current) clearInterval(progressTimer.current); };
-    }, [content, currentEpisode]);
-
+    }, [content?.id, currentEpisode?.id]); // Usar IDs específicos en lugar de los objetos completos
     const toggleControls = () => {
         if (isLocked) {
             setShowLockIndicator(true);
