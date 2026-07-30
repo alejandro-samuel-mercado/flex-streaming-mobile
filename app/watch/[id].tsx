@@ -32,11 +32,8 @@ const NobaVideoPlayer = React.memo(({
 }: any) => {
     const player = useVideoPlayer(streamSrc, player => {
         player.play();
-        // Desactivamos la pausa preventiva (waitsToMinimizeStalling: false)
-        // para obligar al reproductor a ser agresivo y no detenerse nunca.
         player.bufferOptions = {
             preferredForwardBufferDuration: 120,
-            waitsToMinimizeStalling: false,
         };
     });
 
