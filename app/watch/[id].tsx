@@ -33,6 +33,13 @@ const NobaVideoPlayer = React.memo(({
 }: any) => {
     const player = useVideoPlayer(streamSrc, player => {
         player.play();
+        // Aumentamos el mínimo requerido antes de reanudar tras un corte
+        // para evitar el bucle infinito de "se corta, reproduce 2 segundos y se vuelve a cortar".
+        // No tocamos forwardBuffer para no colapsar la RAM (pantalla negra).
+        player.bufferOptions = {
+            minBufferForPlayback: 5,
+            minBufferForPlaybackAfterRebuffer: 10,
+        };
     });
 
     useEffect(() => {
