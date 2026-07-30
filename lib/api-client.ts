@@ -42,6 +42,9 @@ export async function fetchApi<T>(url: string, options: RequestInit = {}): Promi
   const buildHeaders = (accessToken: string | null): Record<string, string> => {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
       ...(options.headers as Record<string, string> || {}),
     };
     if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
