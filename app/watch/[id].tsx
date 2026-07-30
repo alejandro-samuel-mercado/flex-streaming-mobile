@@ -29,6 +29,7 @@ const NobaVideoPlayer = React.memo(({
     setError,
     onPlayerError,
     playerRef,
+    shouldPlay,
 }: any) => {
     const player = useVideoPlayer(streamSrc, player => {
         player.play();
@@ -44,8 +45,20 @@ const NobaVideoPlayer = React.memo(({
         if (status === 'error') {
             setError('Error al cargar el video. Verifica tu conexión.');
             onPlayerError?.('network_blip');
+        } else if (status === 'readyToPlay' && shouldPlay && !player.playing) {
+            // Auto-resume robusto si el buffer se vació y logró recuperarse
+            player.play();
         }
     });
+
+    // Forzar play/pause de forma imperativa si el estado se desincroniza
+    useEffect(() => {
+        if (shouldPlay && !player.playing && player.status === 'readyToPlay') {
+            player.play();
+        } else if (!shouldPlay && player.playing) {
+            player.pause();
+        }
+    }, [shouldPlay, player, player.status]);
 
     useEventListener(player, 'timeUpdate', ({ currentTime }) => {
         onStatus({
@@ -81,14 +94,13 @@ const NobaVideoPlayer = React.memo(({
 
     return (
         <VideoView
-            key="noba-video-player"
             player={player}
-            style={s.video}
+            style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000' }]}
             contentFit={resizeMode === 'contain' ? 'contain' : 'cover'}
             nativeControls={false}
         />
     );
-}, (prev:any, next:any) => prev.resizeMode === next.resizeMode && prev.streamSrc === next.streamSrc);
+}, (prev:any, next:any) => prev.resizeMode === next.resizeMode && prev.streamSrc === next.streamSrc && prev.shouldPlay === next.shouldPlay);
 
 export default function WatchScreen() {
     const { width: SW, height: SH } = useWindowDimensions();
@@ -674,6 +686,7 @@ export default function WatchScreen() {
                     streamSrc={streamSrc}
                     playerRef={playerRef}
                     resizeMode={resizeMode}
+                    shouldPlay={isPlaying}
                     onStatus={onStatus}
                     setError={setError}
                     onPlayerError={async (type: string) => {
