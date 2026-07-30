@@ -32,9 +32,6 @@ const NobaVideoPlayer = React.memo(({
 }: any) => {
     const player = useVideoPlayer(streamSrc, player => {
         player.play();
-        player.bufferOptions = {
-            preferredForwardBufferDuration: 120,
-        };
     });
 
     useEffect(() => {
