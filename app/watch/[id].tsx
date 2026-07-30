@@ -5,7 +5,7 @@ import * as NavigationBar from 'expo-navigation-bar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { StatusBar } from 'expo-status-bar';
-import { useVideoPlayer, VideoView } from 'expo-video';
+import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { AlertCircle, ArrowLeft, Check, ChevronDown, ChevronRight, Clock, Languages, List, Lock, Maximize, MessageSquare, Minimize, Pause, Play, RotateCcw, RotateCw, Settings, SkipBack, SkipForward, Smartphone, Unlock, Volume2, VolumeX, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
@@ -24,79 +24,38 @@ import { Colors } from '../../theme/colors';
 // Isolated Video component to prevent any UI-induced re-renders
 const NobaVideoPlayer = React.memo(({
     streamSrc,
+    videoRef,
     resizeMode,
     onStatus,
     setError,
     onPlayerError,
-    playerRef,
     shouldPlay,
     width,
     height,
 }: any) => {
-    const player = useVideoPlayer(streamSrc, player => {
-        player.play();
-        
-        player.bufferOptions = {
-            minBufferForPlayback: 20,
-            maxBufferBytes: 250 * 1024 * 1024,
-        };
-    });
-
-    useEffect(() => {
-        if (playerRef) playerRef.current = player;
-    }, [player, playerRef]);
-
-
-
-    useEventListener(player, 'statusChange', ({ status, error }) => {
-        if (status === 'error') {
-            setError('Error al cargar el video. Verifica tu conexión.');
-            onPlayerError?.('network_blip');
-        }
-    });
-
-
-    useEventListener(player, 'timeUpdate', ({ currentTime }) => {
-        onStatus({
-            isLoaded: true,
-            positionMillis: currentTime * 1000,
-            durationMillis: (player.duration || 0) * 1000,
-            isPlaying: player.playing,
-            isBuffering: player.status !== 'readyToPlay',
-            didJustFinish: player.status === 'idle' && player.duration > 0 && currentTime >= player.duration
-        });
-    });
-
-    useEventListener(player, 'playingChange', ({ isPlaying }) => {
-        onStatus({
-            isLoaded: true,
-            positionMillis: player.currentTime * 1000,
-            durationMillis: (player.duration || 0) * 1000,
-            isPlaying: isPlaying,
-            isBuffering: player.status !== 'readyToPlay',
-        });
-    });
-
-    if (Platform.OS === 'web') {
-        return (
-            <View style={[s.video, { backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }]}>
-                <Text style={{ color: '#fff', textAlign: 'center', padding: 40, fontSize: 16 }}>
-                    El reproductor de video HLS no está soportado en la vista web.
-                    Por favor, prueba la reproducción desde un celular o emulador Android.
-                </Text>
-            </View>
-        );
-    }
-
     return (
-        <VideoView
-            player={player}
+        <Video
+            key="noba-video-player"
+            ref={videoRef}
+            source={streamSrc ? { uri: streamSrc } : undefined}
             style={[{ position: 'absolute', top: 0, left: 0, width, height, backgroundColor: '#000' }]}
-            contentFit={resizeMode === 'contain' ? 'contain' : 'cover'}
-            nativeControls={false}
+            resizeMode={resizeMode === 'contain' ? ResizeMode.CONTAIN : ResizeMode.COVER}
+            onPlaybackStatusUpdate={onStatus}
+            progressUpdateIntervalMillis={1000}
+            useNativeControls={false}
+            shouldCorrectPitch={false}
+            onError={(err) => {
+                const isNullError = !err || err === 'null' || String(err).toLowerCase().includes('null');
+                if (isNullError) {
+                    onPlayerError?.('network_blip');
+                } else {
+                    console.error('Video fatal error:', err);
+                    setError('Error al cargar el video. Verifica tu conexión.');
+                }
+            }}
         />
     );
-}, (prev:any, next:any) => prev.resizeMode === next.resizeMode && prev.streamSrc === next.streamSrc && prev.shouldPlay === next.shouldPlay && prev.width === next.width && prev.height === next.height);
+}, (prev, next) => prev.resizeMode === next.resizeMode && prev.streamSrc === next.streamSrc && prev.width === next.width && prev.height === next.height);
 
 export default function WatchScreen() {
     const { width: SW, height: SH } = useWindowDimensions();
@@ -135,7 +94,6 @@ export default function WatchScreen() {
     
     // Subtitles Engine State
     const [selectedSubtitle, setSelectedSubtitle] = useState<any>(null);
-    const [selectedAudioTrack, setSelectedAudioTrack] = useState<any>(null);
     const [subtitleCues, setSubtitleCues] = useState<SubtitleCue[]>([]);
     const subtitleCuesRef = useRef<SubtitleCue[]>([]);
     const [currentSubtitleText, setCurrentSubtitleText] = useState<string>('');
@@ -145,7 +103,7 @@ export default function WatchScreen() {
     const lockTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [resumeTime, setResumeTime] = useState<number | null>(null);
     const [showResumePopup, setShowResumePopup] = useState(false);
-    const playerRef = useRef<any>(null);
+    const videoRef = useRef<any>(null);
     const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -200,7 +158,7 @@ export default function WatchScreen() {
                 positionSV.value = targetPos;
                 positionRef.current = targetPos;
                 // Avoid calling play right after setPosition as it can freeze
-                if (playerRef.current) playerRef.current.currentTime = targetPos / 1000;
+                if (videoRef.current) { videoRef.current.setPositionAsync(targetPos).catch(()=>{}); }
             }
         } catch (e) {
             console.error("Seek error:", e);
@@ -413,14 +371,14 @@ export default function WatchScreen() {
                     // to avoid immediate freeze after the first few seconds.
                     try {
                         const shouldAutoPlay = finalResumeTime <= 10;
-                        if (playerRef.current) {
-                            if (shouldAutoPlay) playerRef.current.play();
-                            else playerRef.current.pause();
+                        if (videoRef.current) {
+                            if (shouldAutoPlay) videoRef.current.playAsync().catch(()=>{});
+                            else videoRef.current.pauseAsync().catch(()=>{});
                         }
 
                         // Perform initial seek here, once.
-                        if (finalResumeTime > 10 && playerRef.current) {
-                            playerRef.current.currentTime = finalResumeTime;
+                        if (finalResumeTime > 10 && videoRef.current) {
+                            videoRef.current.currentTime = finalResumeTime;
                             hasInitialSeeked.current = true;
                         }
                     } catch (e) { }
@@ -680,7 +638,7 @@ export default function WatchScreen() {
             {streamSrc ? (
                 <NobaVideoPlayer
                     streamSrc={streamSrc}
-                    playerRef={playerRef}
+                    videoRef={videoRef}
                     resizeMode={resizeMode}
                     shouldPlay={isPlaying}
                     width={SW}
@@ -696,14 +654,14 @@ export default function WatchScreen() {
                         retryCount.current += 1;
                         const url = streamUrlRef.current;
                         const savedPos = lastPositionRef.current;
-                        if (!url || !playerRef.current) return;
+                        if (!url || !videoRef.current) return;
                         try {
                             setIsBuffering(true);
-                            playerRef.current.replace(url);
+                            videoRef.current.unloadAsync().then(() => videoRef.current.loadAsync({ uri: url }, { shouldPlay: true }, false)).catch(()=>{});
                             await new Promise(r => setTimeout(r, 1500));
-                            playerRef.current.play();
+                            videoRef.current.playAsync().catch(()=>{});
                             if (savedPos > 2000) {
-                                playerRef.current.currentTime = savedPos / 1000;
+                                videoRef.current.setPositionAsync(savedPos).catch(()=>{});
                             }
                         } catch (e) {
                             setError('Error al reconectar el stream.');
@@ -776,7 +734,7 @@ export default function WatchScreen() {
                                 const newPos = Math.max(0, positionRef.current - 20000);
                                 positionSV.value = newPos;
                                 positionRef.current = newPos;
-                                if (playerRef.current) playerRef.current.currentTime = newPos / 1000;
+                                if (videoRef.current) { videoRef.current.setPositionAsync(newPos).catch(()=>{}); }
                             }} onFocus={() => setShowControls(true)}>
                                 <RotateCcw size={scale(32)} color="rgba(255,255,255,0.8)" />
                                 <Text style={s.skipText}>20s</Text>
@@ -784,10 +742,10 @@ export default function WatchScreen() {
                             <TVPlaybackButton style={s.playBtn} onPress={() => {
                                 if (isPlaying) {
                                     setIsPlaying(false);
-                                    playerRef.current?.pause();
+                                    videoRef.current?.pauseAsync().catch(()=>{});
                                 } else {
                                     setIsPlaying(true);
-                                    playerRef.current?.play();
+                                    videoRef.current?.playAsync().catch(()=>{});
                                 }
                             }} onFocus={() => setShowControls(true)}>
                                 {isPlaying ? <Pause size={scale(36)} fill={Colors.white} color={Colors.white} /> : <Play size={scale(36)} fill={Colors.white} color={Colors.white} style={{ marginLeft: 4 }} />}
@@ -796,7 +754,7 @@ export default function WatchScreen() {
                                 const newPos = Math.min(durationRef.current, positionRef.current + 20000);
                                 positionSV.value = newPos;
                                 positionRef.current = newPos;
-                                if (playerRef.current) playerRef.current.currentTime = newPos / 1000;
+                                if (videoRef.current) { videoRef.current.setPositionAsync(newPos).catch(()=>{}); }
                             }} onFocus={() => setShowControls(true)}>
                                 <RotateCw size={scale(32)} color="rgba(255,255,255,0.8)" />
                                 <Text style={s.skipText}>20s</Text>
@@ -830,7 +788,7 @@ export default function WatchScreen() {
                                     <TouchableOpacity onPress={() => {
                                         const nextMute = !isMuted;
                                         setIsMuted(nextMute);
-                                        if (playerRef.current) playerRef.current.muted = nextMute;
+                                        if (videoRef.current) { videoRef.current.setIsMutedAsync(nextMute).catch(()=>{}); }
                                     }} style={s.actionBtn}>
                                         {isMuted ? <VolumeX size={20} color={Colors.white} /> : <Volume2 size={20} color={Colors.white} />}
                                     </TouchableOpacity>
@@ -985,36 +943,7 @@ export default function WatchScreen() {
                                     </>
                                 )}
 
-                                {activeMenu === 'audio' && (
-                                    <>
-                                        {(playerRef.current?.availableAudioTracks || []).map((aud: any, i: number) => {
-                                            const currentTrack = selectedAudioTrack || playerRef.current?.audioTrack;
-                                            const isActive = currentTrack 
-                                                ? (currentTrack === aud || 
-                                                   (currentTrack.index !== undefined && aud.index !== undefined && currentTrack.index === aud.index) ||
-                                                   (currentTrack.id !== undefined && aud.id !== undefined && currentTrack.id === aud.id) ||
-                                                   ((currentTrack.label || currentTrack.language || currentTrack.name) && (currentTrack.label || currentTrack.language || currentTrack.name) === (aud.label || aud.language || aud.name)))
-                                                : i === 0;
-                                            return (
-                                                <TouchableOpacity key={i} style={[s.menuItem, isActive && s.menuItemActive]} onPress={() => {
-                                                    if (playerRef.current) {
-                                                        playerRef.current.audioTrack = aud;
-                                                    }
-                                                    setSelectedAudioTrack(aud);
-                                                    setActiveMenu(null);
-                                                }}>
-                                                    <Text style={s.menuItemText}>{aud.label || aud.language || aud.name || `Pista ${i + 1}`}</Text>
-                                                    {isActive && <Check size={16} color={Colors.primary} />}
-                                                </TouchableOpacity>
-                                            );
-                                        })}
-                                        {(!playerRef.current?.availableAudioTracks || playerRef.current.availableAudioTracks.length === 0) && (
-                                            <View style={s.menuItem}>
-                                                <Text style={s.menuItemText}>No hay pistas de audio disponibles.</Text>
-                                            </View>
-                                        )}
-                                    </>
-                                )}
+                                
 
                                 {activeMenu === 'quality' && (
                                     <>
@@ -1050,9 +979,9 @@ export default function WatchScreen() {
                                 setShowResumePopup(false);
                                 setIsPlaying(true);
                                 try {
-                                    if (playerRef.current) {
-                                        playerRef.current.currentTime = resumeTime || 0;
-                                        playerRef.current.play();
+                                    if (videoRef.current) {
+                                        videoRef.current.setPositionAsync((resumeTime || 0) * 1000).catch(()=>{});
+                                        videoRef.current.playAsync().catch(()=>{});
                                     }
                                 } catch (e) { }
                             }}>
@@ -1062,9 +991,9 @@ export default function WatchScreen() {
                                 setShowResumePopup(false);
                                 setIsPlaying(true);
                                 try {
-                                    if (playerRef.current) {
-                                        playerRef.current.currentTime = 0;
-                                        playerRef.current.play();
+                                    if (videoRef.current) {
+                                        videoRef.current.setPositionAsync(0).catch(()=>{});
+                                        videoRef.current.playAsync().catch(()=>{});
                                     }
                                 } catch (e) { }
                             }}>
