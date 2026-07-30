@@ -8,7 +8,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { AlertCircle, ArrowLeft, Check, ChevronDown, ChevronRight, Clock, Languages, List, Lock, Maximize, MessageSquare, Minimize, Pause, Play, RotateCcw, RotateCw, Settings, SkipBack, SkipForward, Smartphone, Unlock, Volume2, VolumeX, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,11 +32,11 @@ const NobaVideoPlayer = React.memo(({
 }: any) => {
     const player = useVideoPlayer(streamSrc, player => {
         player.play();
-        // Búfer optimizado (20s): suficiente para soportar oscilaciones de red
-        // y cortes en móvil, sin agotar la RAM ni disparar el Garbage Collector en Android.
+        // Desactivamos la pausa preventiva (waitsToMinimizeStalling: false)
+        // para obligar al reproductor a ser agresivo y no detenerse nunca.
         player.bufferOptions = {
-            preferredForwardBufferDuration: 120,    // iOS + Android: aumentamos el buffer a 120s para prevenir cortes
-            waitsToMinimizeStalling: true,         // iOS: espera buffer saludable antes de arrancar
+            preferredForwardBufferDuration: 120,
+            waitsToMinimizeStalling: false,
         };
     });
 
@@ -60,45 +60,9 @@ const NobaVideoPlayer = React.memo(({
             durationMillis: (player.duration || 0) * 1000,
             isPlaying: player.playing,
             isBuffering: player.status !== 'readyToPlay',
-            didJustFinish: player.status === 'idle' && currentTime >= player.duration
+            didJustFinish: player.status === 'idle' && player.duration > 0 && currentTime >= player.duration
         });
     });
-    // Fallback polling: En dispositivos Android con HLS, el evento nativo `timeUpdate`
-    // a veces deja de dispararse luego de un buffer stall.
-    // Usamos un pequeño intervalo manual para garantizar que la UI avance siempre.
-    const watchdogRef = useRef({ lastTime: -1, stuckCount: 0 });
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            if (player && player.playing) {
-                const current = player.currentTime;
-
-                // Watchdog (Perro Guardián): Detectar si ExoPlayer se congeló por un gap en los timestamps
-                if (current === watchdogRef.current.lastTime) {
-                    watchdogRef.current.stuckCount += 1;
-                    // Si se queda atascado en el mismo milisegundo por más de 4 segundos (8 ticks de 500ms)
-                    if (watchdogRef.current.stuckCount >= 8) {
-                        console.log('🐶 [Watchdog] ¡Atasco detectado! Forzando micro-salto para destrabar ExoPlayer...');
-                        player.currentTime = current + 0.1; // Micro-seek imperceptible para purgar y reiniciar el decoder
-                        watchdogRef.current.stuckCount = 0;
-                    }
-                } else {
-                    watchdogRef.current.lastTime = current;
-                    watchdogRef.current.stuckCount = 0;
-                }
-
-                onStatus({
-                    isLoaded: true,
-                    positionMillis: current * 1000,
-                    durationMillis: (player.duration || 0) * 1000,
-                    isPlaying: player.playing,
-                    isBuffering: player.status !== 'readyToPlay',
-                    didJustFinish: player.status === 'idle' && player.duration > 0 && current >= player.duration
-                });
-            }
-        }, 500);
-        return () => clearInterval(interval);
-    }, [player, onStatus]);
 
     useEventListener(player, 'playingChange', ({ isPlaying }) => {
         onStatus({
