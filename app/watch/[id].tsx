@@ -66,16 +66,34 @@ const NobaVideoPlayer = React.memo(({
     // Fallback polling: En dispositivos Android con HLS, el evento nativo `timeUpdate`
     // a veces deja de dispararse luego de un buffer stall.
     // Usamos un pequeño intervalo manual para garantizar que la UI avance siempre.
+    const watchdogRef = useRef({ lastTime: -1, stuckCount: 0 });
+
     useEffect(() => {
         const interval = setInterval(() => {
             if (player && player.playing) {
+                const current = player.currentTime;
+
+                // Watchdog (Perro Guardián): Detectar si ExoPlayer se congeló por un gap en los timestamps
+                if (current === watchdogRef.current.lastTime) {
+                    watchdogRef.current.stuckCount += 1;
+                    // Si se queda atascado en el mismo milisegundo por más de 4 segundos (8 ticks de 500ms)
+                    if (watchdogRef.current.stuckCount >= 8) {
+                        console.log('🐶 [Watchdog] ¡Atasco detectado! Forzando micro-salto para destrabar ExoPlayer...');
+                        player.currentTime = current + 0.1; // Micro-seek imperceptible para purgar y reiniciar el decoder
+                        watchdogRef.current.stuckCount = 0;
+                    }
+                } else {
+                    watchdogRef.current.lastTime = current;
+                    watchdogRef.current.stuckCount = 0;
+                }
+
                 onStatus({
                     isLoaded: true,
-                    positionMillis: player.currentTime * 1000,
+                    positionMillis: current * 1000,
                     durationMillis: (player.duration || 0) * 1000,
                     isPlaying: player.playing,
                     isBuffering: player.status !== 'readyToPlay',
-                    didJustFinish: player.status === 'idle' && player.duration > 0 && player.currentTime >= player.duration
+                    didJustFinish: player.status === 'idle' && player.duration > 0 && current >= player.duration
                 });
             }
         }, 500);
