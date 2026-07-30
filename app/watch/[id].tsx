@@ -30,15 +30,15 @@ const NobaVideoPlayer = React.memo(({
     onPlayerError,
     playerRef,
     shouldPlay,
+    width,
+    height,
 }: any) => {
     const player = useVideoPlayer(streamSrc, player => {
         player.play();
-        // Aumentamos el mínimo requerido antes de reanudar tras un corte
-        // para evitar el bucle infinito de "se corta, reproduce 2 segundos y se vuelve a cortar".
-        // No tocamos forwardBuffer para no colapsar la RAM (pantalla negra).
+        
         player.bufferOptions = {
-            minBufferForPlayback: 5,
-            minBufferForPlaybackAfterRebuffer: 10,
+            minBufferForPlayback: 20,
+            maxBufferBytes: 250 * 1024 * 1024,
         };
     });
 
@@ -52,20 +52,9 @@ const NobaVideoPlayer = React.memo(({
         if (status === 'error') {
             setError('Error al cargar el video. Verifica tu conexión.');
             onPlayerError?.('network_blip');
-        } else if (status === 'readyToPlay' && shouldPlay && !player.playing) {
-            // Auto-resume robusto si el buffer se vació y logró recuperarse
-            player.play();
         }
     });
 
-    // Forzar play/pause de forma imperativa si el estado se desincroniza
-    useEffect(() => {
-        if (shouldPlay && !player.playing && player.status === 'readyToPlay') {
-            player.play();
-        } else if (!shouldPlay && player.playing) {
-            player.pause();
-        }
-    }, [shouldPlay, player, player.status]);
 
     useEventListener(player, 'timeUpdate', ({ currentTime }) => {
         onStatus({
@@ -102,12 +91,12 @@ const NobaVideoPlayer = React.memo(({
     return (
         <VideoView
             player={player}
-            style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000' }]}
+            style={[{ position: 'absolute', top: 0, left: 0, width, height, backgroundColor: '#000' }]}
             contentFit={resizeMode === 'contain' ? 'contain' : 'cover'}
             nativeControls={false}
         />
     );
-}, (prev:any, next:any) => prev.resizeMode === next.resizeMode && prev.streamSrc === next.streamSrc && prev.shouldPlay === next.shouldPlay);
+}, (prev:any, next:any) => prev.resizeMode === next.resizeMode && prev.streamSrc === next.streamSrc && prev.shouldPlay === next.shouldPlay && prev.width === next.width && prev.height === next.height);
 
 export default function WatchScreen() {
     const { width: SW, height: SH } = useWindowDimensions();
@@ -694,6 +683,8 @@ export default function WatchScreen() {
                     playerRef={playerRef}
                     resizeMode={resizeMode}
                     shouldPlay={isPlaying}
+                    width={SW}
+                    height={SH}
                     onStatus={onStatus}
                     setError={setError}
                     onPlayerError={async (type: string) => {
