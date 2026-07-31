@@ -45,12 +45,6 @@ const NobaVideoPlayer = React.memo(({
             paused={!shouldPlay}
             muted={isMuted}
             useTextureView={false}
-            bufferConfig={{
-                minBufferMs: 30000,
-                maxBufferMs: 120000,
-                bufferForPlaybackMs: 5000,
-                bufferForPlaybackAfterRebufferMs: 10000
-            }}
             onProgress={(data: any) => {
                 onStatus({
                     isLoaded: true,
