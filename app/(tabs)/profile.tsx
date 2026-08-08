@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { Colors } from '../../theme/colors';
-import { User, Calendar, Smartphone, Clock, Heart, ChevronRight, LogOut, Sparkles, Shield, Zap } from 'lucide-react-native';
+import { User, Calendar, Smartphone, Clock, Heart, ChevronRight, LogOut, Zap, MessageSquare } from 'lucide-react-native';
 import { FuturisticBackground } from '../../components/ui/FuturisticBackground';
 import { scale } from '../../lib/responsive';
 import { handleNavScroll } from '../../lib/nav-state';
@@ -142,7 +142,6 @@ export default function ProfileScreen() {
                                 </View>
                                 <View style={s.menuItemTexts}>
                                     <Text style={s.menuItemTitle}>Historial de Reproducción</Text>
-                                   
                                 </View>
                                 <ChevronRight size={18} color="rgba(255,255,255,0.4)" />
                             </TouchableOpacity>
@@ -155,7 +154,18 @@ export default function ProfileScreen() {
                                 </View>
                                 <View style={s.menuItemTexts}>
                                     <Text style={s.menuItemTitle}>Mis Favoritos</Text>
-                                    
+                                </View>
+                                <ChevronRight size={18} color="rgba(255,255,255,0.4)" />
+                            </TouchableOpacity>
+
+                            <View style={s.menuDivider} />
+
+                            <TouchableOpacity style={s.menuItem} onPress={() => router.push('/requests' as any)}>
+                                <View style={s.iconWrapperYellow}>
+                                    <MessageSquare size={20} color="#FFD700" />
+                                </View>
+                                <View style={s.menuItemTexts}>
+                                    <Text style={s.menuItemTitle}>Solicitudes y Reportes</Text>
                                 </View>
                                 <ChevronRight size={18} color="rgba(255,255,255,0.4)" />
                             </TouchableOpacity>
@@ -190,16 +200,16 @@ const s = StyleSheet.create({
     
     heroContainer: { alignItems: 'center', marginBottom: 28 },
     avatarWrap: { marginBottom: 16 },
-    avatarCyber: { width: 96, height: 96, borderTopLeftRadius: 36, borderBottomRightRadius: 36, borderTopRightRadius: 14, borderBottomLeftRadius: 14, backgroundColor: '#081026', borderWidth: 2.5, borderColor: '#00D4FF', justifyContent: 'center', alignItems: 'center', shadowColor: '#00D4FF', shadowRadius: 16, shadowOpacity: 0.6, elevation: 8 },
+    avatarCyber: { width: 96, height: 96, borderRadius: 48, backgroundColor: '#081026', borderWidth: 2.5, borderColor: '#00D4FF', justifyContent: 'center', alignItems: 'center', shadowColor: '#00D4FF', shadowRadius: 16, shadowOpacity: 0.6, elevation: 8 },
     avatarText: { fontSize: scale(40), fontWeight: '900', color: '#00D4FF' },
-    avatarGlowDot: { position: 'absolute', top: 8, right: 8, width: 10, height: 10, borderRadius: 5, backgroundColor: '#00FF9D' },
+    avatarGlowDot: { position: 'absolute', top: 4, right: 12, width: 12, height: 12, borderRadius: 6, backgroundColor: '#00FF9D', borderWidth: 2, borderColor: '#081026' },
     userName: { fontSize: scale(26), fontWeight: '900', color: Colors.white, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1.5 },
     roleBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1.5, borderColor: '#00FF9D', backgroundColor: 'rgba(0, 255, 157, 0.15)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20 },
     roleText: { fontSize: scale(11), fontWeight: '900', color: '#00FF9D', letterSpacing: 2, textTransform: 'uppercase' },
     
     cardWrapper: { marginHorizontal: 16, marginBottom: 16 },
-    cyberCard: { width: '100%', backgroundColor: '#081026', borderTopLeftRadius: 36, borderBottomRightRadius: 36, borderTopRightRadius: 14, borderBottomLeftRadius: 14, borderWidth: 1.5, borderColor: '#00D4FF', overflow: 'hidden', shadowColor: '#00D4FF', shadowRadius: 12, shadowOpacity: 0.4, elevation: 6 },
-    cyberCardSmall: { width: '100%', backgroundColor: '#081026', borderTopLeftRadius: 24, borderBottomRightRadius: 24, borderTopRightRadius: 8, borderBottomLeftRadius: 8, borderWidth: 1.5, overflow: 'hidden' },
+    cyberCard: { width: '100%', backgroundColor: '#081026', borderRadius: 24, borderWidth: 1.5, borderColor: 'rgba(0, 212, 255, 0.4)', overflow: 'hidden', shadowColor: '#00D4FF', shadowRadius: 12, shadowOpacity: 0.2, elevation: 6 },
+    cyberCardSmall: { width: '100%', backgroundColor: '#081026', borderRadius: 20, borderWidth: 1.5, overflow: 'hidden' },
     
     planInner: { padding: 22 },
     planHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22 },
@@ -224,10 +234,11 @@ const s = StyleSheet.create({
     statLabel: { fontSize: scale(10), fontWeight: '900', color: Colors.textMuted, letterSpacing: 1.2 },
     
     sectionContainer: { marginHorizontal: 16, marginBottom: 24 },
-    sectionTitle: { fontSize: scale(12), fontWeight: '900', color: '#00FF9D', letterSpacing: 1.5, marginBottom: 12, marginLeft: 6 },
+    sectionTitle: { fontSize: scale(12), fontWeight: '900', color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5, marginBottom: 12, marginLeft: 6 },
     menuItem: { flexDirection: 'row', alignItems: 'center', padding: 18 },
-    iconWrapperCyan: { width: 44, height: 44, borderTopLeftRadius: 16, borderBottomRightRadius: 16, borderTopRightRadius: 6, borderBottomLeftRadius: 6, backgroundColor: 'rgba(0, 255, 157, 0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 16, borderWidth: 1, borderColor: '#00FF9D' },
-    iconWrapperPink: { width: 44, height: 44, borderTopLeftRadius: 16, borderBottomRightRadius: 16, borderTopRightRadius: 6, borderBottomLeftRadius: 6, backgroundColor: 'rgba(0, 212, 255, 0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 16, borderWidth: 1, borderColor: '#00D4FF' },
+    iconWrapperCyan: { width: 44, height: 44, borderRadius: 16, backgroundColor: 'rgba(0, 255, 157, 0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 16, borderWidth: 1, borderColor: '#00FF9D' },
+    iconWrapperPink: { width: 44, height: 44, borderRadius: 16, backgroundColor: 'rgba(0, 212, 255, 0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 16, borderWidth: 1, borderColor: '#00D4FF' },
+    iconWrapperYellow: { width: 44, height: 44, borderRadius: 16, backgroundColor: 'rgba(255, 215, 0, 0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 16, borderWidth: 1, borderColor: '#FFD700' },
     menuItemTexts: { flex: 1 },
     menuItemTitle: { fontSize: scale(16), fontWeight: '800', color: Colors.white, marginBottom: 2 },
     menuItemSub: { fontSize: scale(12), color: Colors.textMuted },

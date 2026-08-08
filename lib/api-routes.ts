@@ -86,6 +86,11 @@ export const API_ROUTES = {
   HOMEPAGE: {
     DATA: `${API_BASE_URL}/homepage`,
   },
+  REQUESTS: {
+    BASE: `${API_BASE_URL}/requests`,
+    TMDB_SEARCH: `${API_BASE_URL}/requests/tmdb-search`,
+    DB_SEARCH: `${API_BASE_URL}/requests/db-search`,
+  },
 } as const;
 
 /**
