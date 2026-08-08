@@ -173,6 +173,25 @@ export default function ProfileScreen() {
                     </View>
                 </View>
 
+                {/* Admin Section */}
+                {(user.role === 'ADMIN' || user.role === 'SUPER_VENDOR') && (
+                    <View style={s.sectionContainer}>
+                        <Text style={s.sectionTitle}>ADMINISTRACIÓN</Text>
+                        <View style={s.cyberCard}>
+                            <TouchableOpacity style={s.menuItem} onPress={() => router.push('/admin-requests' as any)}>
+                                <View style={[s.iconWrapperYellow, { borderColor: '#FF3366', backgroundColor: 'rgba(255, 51, 102, 0.15)' }]}>
+                                    <MessageSquare size={20} color="#FF3366" />
+                                </View>
+                                <View style={s.menuItemTexts}>
+                                    <Text style={s.menuItemTitle}>Gestión de Solicitudes</Text>
+                                    <Text style={s.menuItemSub}>Revisar y responder reportes</Text>
+                                </View>
+                                <ChevronRight size={18} color="rgba(255,255,255,0.4)" />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                )}
+
                 {/* Logout */}
                 <View style={s.logoutWrapper}>
                     <View style={[s.cyberCardSmall, { borderColor: 'rgba(255, 51, 102, 0.4)' }]}>

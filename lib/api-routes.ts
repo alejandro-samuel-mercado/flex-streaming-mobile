@@ -90,6 +90,8 @@ export const API_ROUTES = {
     BASE: `${API_BASE_URL}/requests`,
     TMDB_SEARCH: `${API_BASE_URL}/requests/tmdb-search`,
     DB_SEARCH: `${API_BASE_URL}/requests/db-search`,
+    ADMIN_LIST: `${API_BASE_URL}/requests/admin`,
+    ADMIN_STATUS: (id: string) => `${API_BASE_URL}/requests/admin/${id}/status`,
   },
 } as const;
 

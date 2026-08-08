@@ -77,11 +77,10 @@ export default function WatchScreen() {
     const router = useRouter();
     const { loading: authLoading, user: authUser } = useAuth();
 
-    // Stable IDs that never change during the lifecycle of the screen
-    // This prevents Expo Router's unstable search params from triggering reloads
+    // Stable IDs that never change their reference because they are primitive strings
     const rawParams = useLocalSearchParams<{ id: string, episodeId?: string }>();
-    const screenIds = useRef({ id: rawParams.id, episodeId: rawParams.episodeId });
-    const { id, episodeId } = screenIds.current;
+    const id = String(rawParams.id);
+    const episodeId = rawParams.episodeId ? String(rawParams.episodeId) : undefined;
 
     const insets = useSafeAreaInsets();
 
@@ -116,6 +115,7 @@ export default function WatchScreen() {
     const [isLocked, setIsLocked] = useState(false);
     const [showLockIndicator, setShowLockIndicator] = useState(false);
     const lockTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isSwitchingEpisodeRef = useRef(false);
     const [resumeTime, setResumeTime] = useState<number | null>(null);
     const [showResumePopup, setShowResumePopup] = useState(false);
     const videoRef = useRef<any>(null);
@@ -281,8 +281,11 @@ export default function WatchScreen() {
             const cleanup = async () => {
                 try {
                     await deactivateKeepAwake();
-                    // Force portrait before leaving the player to stabilize the rest of the app
-                    await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+                    // Force portrait before leaving the player to stabilize the rest of the app,
+                    // BUT ONLY if we are not just switching to another episode
+                    if (!isSwitchingEpisodeRef.current) {
+                        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+                    }
                 } catch (e) { }
             };
             cleanup();
@@ -389,8 +392,7 @@ export default function WatchScreen() {
                 }
 
             } catch (e: any) {
-                console.error("Load error:", e);
-                setError(e.message);
+                setError(e.message || 'Error al cargar el video');
             } finally {
                 setLoading(false);
             }
@@ -551,12 +553,26 @@ export default function WatchScreen() {
     const hasStartedRef = useRef(false);
 
     // Stable ref to access current state inside stable onStatus
-    const stateRef = useRef({ resumeTime, hasNext, currentIdx });
+    const stateRef = useRef({ resumeTime, hasNext, currentIdx, allEpisodes, id, hasPrev });
     useEffect(() => {
-        stateRef.current = { resumeTime, hasNext, currentIdx };
-    }, [resumeTime, hasNext, currentIdx]);
+        stateRef.current = { resumeTime, hasNext, currentIdx, allEpisodes, id, hasPrev };
+    }, [resumeTime, hasNext, currentIdx, allEpisodes, id, hasPrev]);
 
     const isPlayingRef = useRef(true);
+
+    const goNext = useCallback(() => { 
+        const { hasNext, allEpisodes, currentIdx, id } = stateRef.current;
+        if (!hasNext) return; 
+        isSwitchingEpisodeRef.current = true;
+        router.replace(`/watch/${id}?episodeId=${allEpisodes[currentIdx + 1].id}` as any); 
+    }, [router]);
+
+    const goPrev = useCallback(() => { 
+        const { hasPrev, allEpisodes, currentIdx, id } = stateRef.current;
+        if (!hasPrev) return; 
+        isSwitchingEpisodeRef.current = true;
+        router.replace(`/watch/${id}?episodeId=${allEpisodes[currentIdx - 1].id}` as any); 
+    }, [router]);
 
     const onStatus = useCallback((status: any) => {
         if (!status.isLoaded) {
@@ -599,13 +615,13 @@ export default function WatchScreen() {
         const { hasNext: hn } = stateRef.current;
 
         if (status.didJustFinish) {
-            if (hn) goNext();
-            else router.back();
+            if (hn) {
+                goNext();
+            } else {
+                router.back();
+            }
         }
-    }, []); 
-
-    const goNext = () => { if (!hasNext) return; router.replace(`/watch/${id}?episodeId=${allEpisodes[currentIdx + 1].id}` as any); };
-    const goPrev = () => { if (!hasPrev) return; router.replace(`/watch/${id}?episodeId=${allEpisodes[currentIdx - 1].id}` as any); };
+    }, [goNext, router]);
 
     if (loading && !content) return (
         <View style={s.loader}>
@@ -899,7 +915,11 @@ export default function WatchScreen() {
                                                                         sidebarScrollRef.current.scrollTo({ y: offset, animated: false });
                                                                     }
                                                                 } : undefined}
-                                                                onPress={() => { setActiveMenu(null); router.replace(`/watch/${id}?episodeId=${ep.id}` as any); }}
+                                                                onPress={() => { 
+                                                                    setActiveMenu(null); 
+                                                                    isSwitchingEpisodeRef.current = true;
+                                                                    router.replace(`/watch/${id}?episodeId=${ep.id}` as any); 
+                                                                }}
                                                                 style={[s.epItem, isCurrentEp && s.epItemActive]}
                                                                 activeOpacity={0.8}
                                                             >

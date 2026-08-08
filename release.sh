@@ -57,7 +57,7 @@ LOCAL_OUT="$SCRIPT_DIR/$APK_NAME"
 
 echo ""
 echo "🔨 Iniciando compilación en la NUBE..."
-echo "Comando: npx eas-cli build --platform android --profile preview"
+echo "Comando: npx eas-cli build --platform android --profile preview --non-interactive"
 echo ""
 
 cd "$SCRIPT_DIR"
@@ -65,7 +65,7 @@ cd "$SCRIPT_DIR"
 # Se ejecuta en la nube de Expo
 npx eas-cli build \
     --platform android \
-    --profile preview
+    --profile preview --non-interactive
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
